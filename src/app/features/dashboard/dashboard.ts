@@ -51,7 +51,7 @@ import { PageHeader } from '../../shared/page-header';
       @if (d.funnel) {
         <section class="panel">
           <h3>Household participation funnel</h3>
-          <div class="stat-row">
+          <div class="stat-row funnel">
             @for (s of entries(d.funnel.stages); track s[0]) {
               <div class="stat" [title]="d.funnel.definitions[s[0]]"><div class="value">{{ n(s[1]) }}</div>
                 <div class="label">{{ label(s[0]) }}</div><div class="sub muted">{{ d.funnel.definitions[s[0]] }}</div></div>
@@ -77,7 +77,7 @@ import { PageHeader } from '../../shared/page-header';
             }</tbody></table></div>
         </section>
       }
-      <div class="grid-2">
+      <div class="grid-2 align-start">
         @if (d.community) {
           <section class="panel">
             <h3>Demonstrations, surveillance & community resource persons</h3>
@@ -126,7 +126,7 @@ import { PageHeader } from '../../shared/page-header';
             <h3>Workstream records</h3>
             @for (m of d.modules; track m.code) {
               <a class="evidence-row" [routerLink]="m.code === 'mrv' ? '/mrv' : ['/modules', m.code]">
-                <span class="grow">{{ m.number }}. {{ m.name }}</span><strong class="num">{{ m.code === 'mrv' ? '' : n(m.records) }}</strong></a>
+                <span class="grow">{{ m.number }}. {{ m.name }}</span><strong class="num">{{ m.code === 'mrv' ? '→' : n(m.records) }}</strong></a>
             }
           </section>
         }

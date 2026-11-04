@@ -24,15 +24,14 @@ const CHILD: Record<string, 'district' | 'cluster' | null> = { state: 'district'
     <app-page-header title="Geography" subtitle="State → district → cluster hierarchy with registered coverage">
       @if (auth.has('geo.manage')) {<button mat-flat-button (click)="add(null)"><mat-icon>add</mat-icon> Add state</button>}
     </app-page-header>
-    <app-notice>Map views require approved geospatial datasets and licences (pending programme confirmation); the hierarchy and
-      coverage counts below are maintained in the registry.</app-notice>
+    <app-notice>The Farm map shows plots at their recorded GPS points. Administrative boundary layers need approved geospatial datasets and licences (pending programme confirmation); the hierarchy and coverage counts below are maintained in the registry.</app-notice>
     <section class="panel">
       <ng-template #node let-n>
         <div class="tree-row" [style.padding-left.px]="depth(n) * 24">
           <button mat-icon-button (click)="toggle(n)" [disabled]="!n.children.length" [attr.aria-label]="'Expand ' + n.name">
             <mat-icon>{{ n.children.length ? (open().has(n.id) ? 'expand_more' : 'chevron_right') : 'remove' }}</mat-icon>
           </button>
-          <span class="grow"><strong>{{ n.name }}</strong> <span class="muted small">{{ n.unit_type }} · {{ n.code }}</span>
+          <span class="grow"><strong>{{ n.name }}</strong>&ngsp;<span class="muted small">{{ n.unit_type }} · {{ n.code }}</span>
             <app-demo [show]="n.is_demo" />
             @if (n.requires_confirmation) {<span class="badge tone-warning" [matTooltip]="n.confirmation_note ?? ''">Needs confirmation</span>}</span>
           <a class="small" [routerLink]="['/farmers']" [queryParams]="{ geo_unit_id: n.id }" matTooltip="Farmers registered">

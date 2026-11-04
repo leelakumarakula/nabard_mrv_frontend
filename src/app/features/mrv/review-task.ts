@@ -10,6 +10,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
+import { formatNumber } from '../../core/format';
 import { NotifyService } from '../../core/notify.service';
 import { DemoBadge, StatusBadge } from '../../shared/badges';
 import { confirmAction } from '../../shared/confirm-dialog';
@@ -50,9 +51,9 @@ import { Row } from '../../core/models';
       <section class="panel">
         <h3>Comments</h3>
         @for (c of t['comments']; track c.id) {
-          <div class="evidence-row"><span class="grow"><strong>{{ c.author_name }}</strong> <span class="muted small">{{ c.created_at | date: 'medium' }}</span><br />{{ c.comment }}</span></div>
+          <div class="evidence-row"><span class="grow"><strong>{{ c.author_name }}</strong>&ngsp;<span class="muted small">{{ c.created_at | date: 'medium' }}</span><br />{{ c.comment }}</span></div>
         } @empty {<p class="muted">No comments.</p>}
-        <div class="actions"><mat-form-field class="grow"><mat-label>Add comment</mat-label><input matInput [formControl]="comment" /></mat-form-field>
+        <div class="actions" style="align-items: center"><mat-form-field class="grow"><mat-label>Add comment</mat-label><input matInput [formControl]="comment" /></mat-form-field>
           <button mat-stroked-button (click)="addComment()" [disabled]="!comment.value">Post</button></div>
       </section>
       <app-evidence-panel [entityType]="t['entity_type']" [entityId]="t['entity_id']" />
@@ -85,7 +86,7 @@ export class ReviewTaskPage implements OnInit {
     const keys = ['indicator_label', 'value', 'unit', 'period_start', 'period_end', 'scope_type', 'method_code', 'observed_at',
       'validation_status', 'review_status', 'verification_status', 'indicator_requires_confirmation', 'is_provisional'];
     return keys.filter((k) => e?.[k] !== undefined).map((k) => ({
-      label: k.replace(/_/g, ' '), value: e[k],
+      label: k.replace(/_/g, ' '), value: k === 'value' ? formatNumber(e[k], 6) : e[k],
       kind: (k.endsWith('_status') ? 'status' : typeof e[k] === 'boolean' ? 'bool' : 'text') as 'status' | 'bool' | 'text',
     }));
   }

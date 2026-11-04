@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
+import { LookupsService } from '../../core/lookups.service';
 import { Page, Row } from '../../core/models';
 import { NotifyService } from '../../core/notify.service';
 import { StatusBadge } from '../../shared/badges';
@@ -16,6 +17,9 @@ import { Column, DataTable } from '../../shared/data-table';
 import { DetailGrid } from '../../shared/detail-grid';
 import { openForm } from '../../shared/form-dialog';
 import { Notice, PageHeader } from '../../shared/page-header';
+
+const ADAPTER_CODES = ['push_only', 'unconfigured_rest', 'mock_water_meter', 'mock_iot_gateway', 'open_meteo_weather',
+  'nasa_power_weather', 'sentinel2_ndvi', 'sample_climate_engine', 'sample_pest_engine', 'sample_water_engine', 'sample_iot_gateway'];
 
 @Component({
   selector: 'app-integrations',
@@ -26,23 +30,67 @@ import { Notice, PageHeader } from '../../shared/page-header';
     </app-page-header>
     <app-notice kind="warning">Live integrations are configured only after the source owner confirms availability, the API/data
       contract and access. Sources marked MOCK generate synthetic data; "not configured" sources never fabricate data.</app-notice>
-    <app-table [columns]="columns" [rows]="sources()" (rowClick)="router.navigate(['/integrations', $event['source_code']])" />`,
+    <h3 class="section-title">Registered sources</h3>
+    <app-table [columns]="columns" [rows]="sources()" (rowClick)="router.navigate(['/integrations', $event['source_code']])" />
+    @if (catalogue().length) {
+      <h3 class="section-title">Ready-made connectors</h3>
+      <app-notice>"Public data" connectors fetch REAL data from free services (no key needed) for every plot that has GPS
+        coordinates and belongs to an enrolled farmer. "Sample" connectors stand in for the FarmFuture engines and the IoT gateway
+        until their APIs are supplied – everything they create is labelled DEMO. Nothing is fetched until you open the source and
+        click Run pull.@if (auth.has('integration.manage')) { Click a connector to register it.}</app-notice>
+      <app-table [columns]="catalogueColumns" [rows]="catalogue()" [clickable]="auth.has('integration.manage')"
+                 (rowClick)="addFromCatalogue($event)" />
+    }`,
+  styles: `.section-title { margin: 24px 0 10px; }`,
 })
 export class IntegrationsPage implements OnInit {
   protected readonly auth = inject(AuthService);
   protected readonly router = inject(Router);
   private readonly api = inject(ApiService);
   private readonly dialog = inject(MatDialog);
+  private readonly lookups = inject(LookupsService);
   protected readonly sources = signal<Row[]>([]);
+  protected readonly catalogue = signal<Row[]>([]);
+  protected readonly catalogueColumns: Column[] = [
+    { key: 'name', label: 'Connector' }, { key: 'kind', label: 'Data', value: (r) => (r['kind'] === 'sample' ? 'SAMPLE (synthetic)' : 'REAL public data') },
+    { key: 'module_code', label: 'Workstream', kind: 'label' }, { key: 'description', label: 'What it does' },
+    { key: 'registered', label: 'Registered', kind: 'bool', value: (r) => this.sources().some((s) => s['adapter_code'] === r['adapter_code']) },
+  ];
   protected readonly columns: Column[] = [
     { key: 'name', label: 'Source' }, { key: 'source_code', label: 'Code' }, { key: 'module_code', label: 'Workstream', kind: 'label' },
-    { key: 'source_type', label: 'Type', kind: 'label' }, { key: 'connection_status', label: 'Connection' },
+    { key: 'source_type', label: 'Type', kind: 'label' }, { key: 'connection_status', label: 'Connection', value: (r) => String(r['connection_status'] ?? '').split(' – ')[0] },
     { key: 'is_mock', label: 'Mock', kind: 'bool' }, { key: 'last_sync_at', label: 'Last sync', kind: 'datetime' },
     { key: 'last_sync_status', label: 'Last result', kind: 'status' }, { key: 'open_quarantine', label: 'Quarantined', kind: 'number' },
   ];
 
   ngOnInit(): void {
     this.api.get<Row[]>('/integrations/sources').subscribe((s) => this.sources.set(s));
+    this.api.get<Row[]>('/integrations/catalogue').subscribe((c) => this.catalogue.set(c));
+  }
+
+  protected async addFromCatalogue(entry: Row): Promise<void> {
+    if (!this.auth.has('integration.manage')) return;
+    const programmes = await firstValueFrom(this.lookups.loadProgrammes());
+    const saved = await openForm<Row>(this.dialog, {
+      title: `Register: ${entry['name']}`,
+      notice: entry['kind'] === 'sample'
+        ? 'SAMPLE connector: it creates synthetic data, labelled DEMO, until the real API is connected.'
+        : undefined,
+      fields: [
+        { name: 'programme_code', label: 'Programme', type: 'select', required: true,
+          options: programmes.map((p) => ({ value: p.code, label: `${p.code} – ${p.name}` })),
+          hint: 'Records are filed under this programme; only plots of farmers enrolled in it are used' },
+        { name: 'source_code', label: 'Source code (lower_snake)', type: 'text', required: true },
+        { name: 'name', label: 'Name', type: 'text', required: true },
+      ],
+      value: { programme_code: programmes[0]?.code, source_code: entry['default_source_code'], name: entry['name'] },
+      submit: (v) => firstValueFrom(this.api.post('/integrations/sources', {
+        source_code: v['source_code'], name: v['name'], module_code: entry['module_code'], source_type: 'rest_pull',
+        adapter_code: entry['adapter_code'], auth_type: 'none', is_mock: entry['is_mock'], owner: entry['owner'],
+        availability_note: entry['description'], config: { ...entry['config'], programme_code: v['programme_code'] },
+      })),
+    });
+    if (saved?.['source_code']) this.router.navigate(['/integrations', saved['source_code']]);
   }
 
   protected async create(): Promise<void> {
@@ -54,7 +102,7 @@ export class IntegrationsPage implements OnInit {
         { name: 'module_code', label: 'Workstream', type: 'lookup', lookup: 'module' },
         { name: 'source_type', label: 'Type', type: 'select', required: true, options: ['rest_push', 'rest_pull', 'file_exchange'] },
         { name: 'adapter_code', label: 'Adapter', type: 'select', required: true,
-          options: ['push_only', 'unconfigured_rest', 'mock_water_meter', 'mock_iot_gateway'] },
+          options: ADAPTER_CODES },
         { name: 'is_mock', label: 'Mock / demo source', type: 'boolean' },
         { name: 'auth_type', label: 'Authentication', type: 'select', options: ['api_key', 'oauth2', 'basic', 'none'] },
         { name: 'base_url_env_var', label: 'Base URL environment variable', type: 'text', hint: 'Secrets/URLs live in environment config' },
@@ -186,12 +234,13 @@ export class SourceDetailPage implements OnInit {
         { name: 'name', label: 'Name', type: 'text', required: true },
         { name: 'module_code', label: 'Workstream', type: 'lookup', lookup: 'module' },
         { name: 'adapter_code', label: 'Adapter', type: 'select', required: true,
-          options: ['push_only', 'unconfigured_rest', 'mock_water_meter', 'mock_iot_gateway'] },
+          options: ADAPTER_CODES },
         { name: 'enabled', label: 'Enabled (accepts data / runs pulls)', type: 'boolean' },
         { name: 'auth_type', label: 'Authentication', type: 'select', options: ['api_key', 'oauth2', 'basic', 'none'] },
         { name: 'base_url_env_var', label: 'Base URL environment variable', type: 'text', hint: 'Secrets/URLs live in environment config' },
         { name: 'owner', label: 'Owner', type: 'text' },
         { name: 'availability_note', label: 'Availability / contract status', type: 'textarea' },
+        { name: 'config', label: 'Config (JSON)', type: 'json', hint: 'e.g. programme_code, max_plots, past_days' },
       ],
       submit: (v) => firstValueFrom(this.api.patch(`/integrations/sources/${s['source_code']}`, v)),
     });

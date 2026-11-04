@@ -30,7 +30,7 @@ export interface Column {
         @for (col of columns(); track col.key; let first = $first) {
           <ng-container [matColumnDef]="col.key">
             <th mat-header-cell *matHeaderCellDef [style.width]="col.width">{{ col.label }}</th>
-            <td mat-cell *matCellDef="let row">
+            <td mat-cell *matCellDef="let row" [class.nowrap]="isCode(col)">
               @let v = cell(row, col);
               @switch (col.kind) {
                 @case ('status') {<app-status [status]="v" />}
@@ -69,6 +69,11 @@ export class DataTable {
   readonly emptyText = input('No records found');
   readonly page = output<PageEvent>();
   readonly rowClick = output<Row>();
+
+  /** Codes (OD-F-001, OD-HH-001 …) never break at their hyphens, and a value stays on one line with its unit. */
+  protected isCode(col: Column): boolean {
+    return col.key === 'code' || col.key.endsWith('_code') || col.key === 'value';
+  }
 
   keys(): string[] {
     return this.columns().map((c) => c.key);

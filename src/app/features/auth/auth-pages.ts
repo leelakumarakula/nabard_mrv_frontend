@@ -13,21 +13,48 @@ import { Notice, PageHeader } from '../../shared/page-header';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, RouterLink],
+  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, RouterLink],
   template: `
-    <div class="auth-wrap">
-      <div class="auth-card">
-        <img class="auth-logo" src="brand/varsapradaya-logo.svg" alt="Varsapradaya" />
-        <h1>Coffee Climate Resilience MRV</h1>
-        <p class="tagline">Measurement, reporting and verification for climate-resilient coffee landscapes</p>
-        <form [formGroup]="form" (ngSubmit)="submit()">
-          <mat-form-field><mat-label>Email</mat-label><input matInput type="email" formControlName="email" autocomplete="username" /></mat-form-field>
-          <mat-form-field><mat-label>Password</mat-label><input matInput type="password" formControlName="password" autocomplete="current-password" /></mat-form-field>
-          @if (error()) {<p class="error-text" role="alert">{{ error() }}</p>}
-          <button mat-flat-button type="submit" [disabled]="busy()">Sign in</button>
-          <a routerLink="/forgot-password" class="small">Forgot password?</a>
-        </form>
-      </div>
+    <div class="login-split">
+      <section class="login-hero" aria-label="About the platform">
+        <img class="login-hero-icon" src="brand/varsapradaya-icon.webp" alt="" />
+        <p class="login-kicker">Climate-Resilient Coffee Landscapes and Inclusive Rural Livelihoods Programme</p>
+        <h2>Every result traceable to the farm, checked and verified.</h2>
+        <ul class="login-steps">
+          <li><mat-icon>agriculture</mat-icon><div><strong>Measure</strong><span>Farmers, plots, practices, weather, satellite and sensor data</span></div></li>
+          <li><mat-icon>summarize</mat-icon><div><strong>Report</strong><span>Progress against programme targets, with full data lineage</span></div></li>
+          <li><mat-icon>verified</mat-icon><div><strong>Verify</strong><span>Internal review and independent verification before results count</span></div></li>
+        </ul>
+        <div class="login-figures" aria-label="Proposed programme targets">
+          <div><strong>6</strong><span>states</span></div>
+          <div><strong>6,500</strong><span>households</span></div>
+          <div><strong>3,000 ha</strong><span>coffee area</span></div>
+        </div>
+        <p class="login-note">Proposed programme targets · 36 months</p>
+      </section>
+      <section class="login-panel">
+        <div class="login-form-box">
+          <img class="auth-logo" src="brand/varsapradaya-logo.svg" alt="Varsapradaya" />
+          <h1>Sign in</h1>
+          <p class="tagline">Coffee Climate Resilience MRV platform</p>
+          <form [formGroup]="form" (ngSubmit)="submit()">
+            <mat-form-field><mat-label>Email</mat-label>
+              <mat-icon matPrefix>mail</mat-icon>
+              <input matInput type="email" formControlName="email" autocomplete="username" /></mat-form-field>
+            <mat-form-field><mat-label>Password</mat-label>
+              <mat-icon matPrefix>lock</mat-icon>
+              <input matInput [type]="showPassword() ? 'text' : 'password'" formControlName="password" autocomplete="current-password" />
+              <button mat-icon-button matSuffix type="button" (click)="showPassword.set(!showPassword())"
+                      [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+                <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button></mat-form-field>
+            @if (error()) {<p class="error-text" role="alert">{{ error() }}</p>}
+            <button mat-flat-button type="submit" class="login-submit" [disabled]="busy()">{{ busy() ? 'Signing in…' : 'Sign in' }}</button>
+            <a routerLink="/forgot-password" class="small">Forgot password?</a>
+          </form>
+          <p class="login-footer">Access is limited to authorised programme staff. All actions are recorded in the audit log.</p>
+        </div>
+      </section>
     </div>`,
 })
 export class LoginPage {
@@ -36,6 +63,7 @@ export class LoginPage {
   readonly returnUrl = input<string>('/dashboard');
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  protected readonly showPassword = signal(false);
   protected readonly form = new FormGroup({
     email: new FormControl('', [Validators.required, Validators.email]),
     password: new FormControl('', Validators.required),

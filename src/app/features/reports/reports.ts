@@ -137,7 +137,7 @@ export class ReportsPage implements OnInit {
             <tbody>@for (s of c.demonstrations.sites; track s.site_code) {
               <tr><td>{{ s.site_code }} {{ s.name }} <app-demo [show]="s.is_demo" /></td><td>{{ label(s.category) }}</td><td>{{ s.area }}</td>
                 <td><app-status [status]="s.status" /></td><td class="num">{{ s.visits_in_period }}</td></tr>
-            }</tbody></table></section>
+            } @empty {<tr><td colspan="5" class="muted">No demonstration sites recorded for this scope.</td></tr>}</tbody></table></section>
       }
       @if (c.surveillance) {
         <section class="panel"><h3>Pest surveillance</h3>
