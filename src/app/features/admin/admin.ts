@@ -54,6 +54,8 @@ export class UsersPage implements OnInit {
       { name: 'scope_geo', label: 'Geography scope', type: 'lookup', lookup: 'geo', hint: 'State/district/cluster the user may access' },
       { name: 'scope_org', label: 'FPO / organisation scope', type: 'lookup', lookup: 'organisation' },
       { name: 'organisation_id', label: 'Belongs to organisation', type: 'lookup', lookup: 'organisation' },
+      { name: 'farmer_id', label: 'Linked farmer record (Farmer accounts only)', type: 'farmer',
+        hint: 'The farmer sees only this record\'s advisories in "My advisories"' },
     ];
     return includePassword
       ? [{ name: 'email', label: 'Email', type: 'email', required: true },
