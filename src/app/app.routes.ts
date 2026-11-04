@@ -13,6 +13,7 @@ export const routes: Routes = [
     path: '',
     component: Shell,
     canActivate: [authGuard],
+    canActivateChild: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.DashboardPage) },

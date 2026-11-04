@@ -106,7 +106,7 @@ export class ReportsPage implements OnInit {
         <section class="panel"><h3>Progress against targets</h3>
           <table class="simple"><thead><tr><th>Target</th><th class="num">Planned</th><th class="num">Latest value</th><th>Verification</th></tr></thead>
             <tbody>@for (p of c.progress_vs_targets; track p.metric_code) {
-              <tr><td>{{ p.metric_name }}</td><td class="num">{{ n(p.target_value) }} {{ p.unit }} <app-status [status]="p.target_status" /></td>
+              <tr><td>{{ p.metric_name }}@if (p.target_area && p.target_area !== 'Whole programme') {<span class="muted small"> · {{ p.target_area }}</span>}</td><td class="num">{{ n(p.target_value) }} {{ p.unit }} <app-status [status]="p.target_status" /></td>
                 <td class="num">{{ p.latest_result ? n(p.latest_result.value) : '—' }} @if (p.latest_result?.provisional) {<span class="badge tone-warning">PROVISIONAL</span>}</td>
                 <td>@if (p.latest_result) {<app-status [status]="p.latest_result.verification_status" />} @else {—}</td></tr>
             }</tbody></table></section>

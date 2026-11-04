@@ -11,6 +11,10 @@ export const authGuard: CanActivateFn = (route, state) => {
   if (!auth.isAuthenticated()) {
     return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
   }
+  if (auth.me()?.must_change_password && !state.url.startsWith('/profile')) {
+    // The server refuses everything else until the temporary password is changed.
+    return router.createUrlTree(['/profile']);
+  }
   const perm = route.data?.['perm'] as string | string[] | undefined;
   if (perm && !auth.hasAny(Array.isArray(perm) ? perm : [perm])) {
     return router.createUrlTree(['/access-denied']);

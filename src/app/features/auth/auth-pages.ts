@@ -174,6 +174,7 @@ export class ProfilePage implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly api = inject(ApiService);
   private readonly notify = inject(NotifyService);
+  private readonly router = inject(Router);
   protected readonly profile = new FormGroup({ full_name: new FormControl(''), phone: new FormControl('') });
   protected readonly password = new FormGroup({
     current_password: new FormControl('', Validators.required),
@@ -197,9 +198,12 @@ export class ProfilePage implements OnInit {
   }
 
   protected changePassword(): void {
+    const wasTemporary = !!this.auth.me()?.must_change_password;
     this.api.post('/auth/change-password', this.password.value).subscribe(() => {
       this.password.reset();
-      this.auth.loadMe().subscribe();
+      this.auth.loadMe().subscribe(() => {
+        if (wasTemporary) this.router.navigate(['/dashboard']);
+      });
       this.notify.success('Password changed');
     });
   }

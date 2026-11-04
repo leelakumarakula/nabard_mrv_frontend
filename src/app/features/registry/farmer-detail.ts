@@ -34,6 +34,8 @@ const PLOT_FIELDS: FieldDef[] = [
   { name: 'crop', label: 'Crop', type: 'select', options: ['arabica', 'robusta', 'mixed', 'other'] },
   { name: 'variety', label: 'Variety', type: 'text' },
   { name: 'plantation_year', label: 'Plantation year', type: 'integer' },
+  { name: 'plantation_stage', label: 'Plantation stage', type: 'select', options: ['productive', 'young', 'underperforming'],
+    hint: 'Interventions follow verified plantation maturity (proposal §5.2)' },
   { name: 'shade_type', label: 'Shade type', type: 'text' },
   { name: 'irrigation_type', label: 'Irrigation type', type: 'text' },
   { name: 'latitude', label: 'Latitude (restricted)', type: 'number', min: -90, max: 90 },
@@ -130,7 +132,7 @@ export class FarmerDetailPage implements OnInit {
   ];
   protected readonly plotCols: Column[] = [
     { key: 'plot_code', label: 'Plot' }, { key: 'area', label: 'Area', kind: 'number' }, { key: 'area_unit', label: 'Unit' },
-    { key: 'area_source', label: 'Area source', kind: 'label' }, { key: 'crop', label: 'Crop', kind: 'label' },
+    { key: 'area_source', label: 'Area source', kind: 'label' }, { key: 'crop', label: 'Crop', kind: 'label' }, { key: 'plantation_stage', label: 'Stage', kind: 'label' },
     { key: 'irrigation_type', label: 'Irrigation' }, { key: 'latitude', label: 'Lat' }, { key: 'longitude', label: 'Lon' },
   ];
   protected readonly deliveryCols: Column[] = [

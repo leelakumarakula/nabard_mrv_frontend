@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -134,7 +134,7 @@ const NAV: NavGroup[] = [
       </mat-sidenav-content>
     </mat-sidenav-container>`,
 })
-export class Shell implements OnInit {
+export class Shell {
   protected readonly auth = inject(AuthService);
   private readonly api = inject(ApiService);
   private readonly lookups = inject(LookupsService);
@@ -152,8 +152,19 @@ export class Shell implements OnInit {
     })).filter((g) => g.items.length);
   });
 
-  ngOnInit(): void {
-    this.api.get<SystemInfo>('/dashboard/system-info').subscribe((i) => this.info.set(i));
-    if (this.auth.has('programme.read')) this.lookups.loadProgrammes().subscribe();
+  private started = false;
+
+  constructor() {
+    // Load the banner and programme list once the account may use the platform (not while a temporary password
+    // still has to be changed – the server refuses those calls until then).
+    effect(() => {
+      const me = this.auth.me();
+      if (this.started || !me || me.must_change_password) return;
+      this.started = true;
+      untracked(() => {
+        this.api.get<SystemInfo>('/dashboard/system-info').subscribe((i) => this.info.set(i));
+        if (this.auth.has('programme.read')) this.lookups.loadProgrammes().subscribe();
+      });
+    });
   }
 }

@@ -5,6 +5,7 @@ import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRo
 
 import { toParams } from './api.service';
 import { AuthService } from './auth.service';
+import { LookupsService } from './lookups.service';
 import { labelize, localDateTimeToIso, toneOf } from './format';
 import { authGuard } from './guards';
 import { Me } from './models';
@@ -90,5 +91,60 @@ describe('AuthService and authGuard', () => {
     const denied = TestBed.runInInjectionContext(() => authGuard(route('admin.users'), state)) as UrlTree;
     expect(router.serializeUrl(denied)).toBe('/access-denied');
     expect(TestBed.runInInjectionContext(() => authGuard(route('farmer.read'), state))).toBe(true);
+  });
+});
+
+describe('LookupsService', () => {
+  const user = (id: string): Me => ({
+    id, email: `${id}@demo.local`, full_name: id, phone: null, status: 'active', organisation_id: null, farmer_id: null,
+    must_change_password: false, roles: [], role_codes: [], permissions: ['geo.read'], all_scope: false,
+  });
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+  });
+
+  it('never serves one user’s cached lists to the next user in the same tab', () => {
+    const auth = TestBed.inject(AuthService);
+    const lookups = TestBed.inject(LookupsService);
+    const http = TestBed.inject(HttpTestingController);
+    let names: string[] = [];
+
+    auth.me.set(user('coordinator-ap'));
+    lookups.geoUnits().subscribe((g) => (names = g.map((u) => u.name)));
+    http.expectOne((r) => r.url.endsWith('/geo-units')).flush([{ id: 'g1', name: 'Andhra Pradesh', unit_type: 'state' }]);
+    lookups.geoUnits().subscribe();
+    http.expectNone((r) => r.url.endsWith('/geo-units'));  // cached for the same user
+    expect(names).toEqual(['Andhra Pradesh']);
+
+    auth.me.set(user('coordinator-od'));                    // another person signs in
+    lookups.geoUnits().subscribe((g) => (names = g.map((u) => u.name)));
+    http.expectOne((r) => r.url.endsWith('/geo-units')).flush([{ id: 'g2', name: 'Odisha', unit_type: 'state' }]);
+    expect(names).toEqual(['Odisha']);
+    http.verify();
+  });
+});
+
+describe('authGuard with a temporary password', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
+  });
+
+  it('sends the user to the profile page until the password is changed', () => {
+    const auth = TestBed.inject(AuthService);
+    const router = TestBed.inject(Router);
+    const route = { data: {} } as unknown as ActivatedRouteSnapshot;
+    const go = (url: string) => TestBed.runInInjectionContext(() => authGuard(route, { url } as RouterStateSnapshot));
+    auth.me.set({
+      id: 'u9', email: 'new@demo.local', full_name: 'New', phone: null, status: 'active', organisation_id: null,
+      farmer_id: null, must_change_password: true, roles: [], role_codes: [], permissions: ['farmer.read'], all_scope: false,
+    });
+    (auth as unknown as { tokenSignal: { set(v: string): void } }).tokenSignal.set('tok');
+
+    expect(router.serializeUrl(go('/farmers') as UrlTree)).toBe('/profile');
+    expect(go('/profile')).toBe(true);
+    auth.me.update((m) => (m ? { ...m, must_change_password: false } : m));
+    expect(go('/farmers')).toBe(true);
   });
 });

@@ -125,10 +125,13 @@ export class ProgrammeDetailPage implements OnInit {
   readonly id = input.required<string>();
   protected readonly programme = signal<Programme | null>(null);
   protected readonly targets = signal<Row[]>([]);
+  private readonly geoNames = signal<Record<string, string>>({});
   protected readonly periods = signal<Row[]>([]);
   protected readonly orgs = signal<Row[]>([]);
   protected readonly targetCols: Column[] = [
-    { key: 'metric_name', label: 'Metric' }, { key: 'target_value', label: 'Target', kind: 'number' }, { key: 'unit', label: 'Unit' },
+    { key: 'metric_name', label: 'Metric' },
+    { key: 'area', label: 'Area', value: (r) => (r['geo_unit_id'] ? this.geoNames()[r['geo_unit_id']] ?? '…' : 'Whole programme') },
+    { key: 'target_value', label: 'Target', kind: 'number' }, { key: 'unit', label: 'Unit' },
     { key: 'period_label', label: 'Period' }, { key: 'target_version', label: 'Version' },
     { key: 'status', label: 'Status', kind: 'status' }, { key: 'indicator_code', label: 'Indicator' },
     { key: 'source_note', label: 'Source' },
@@ -150,6 +153,7 @@ export class ProgrammeDetailPage implements OnInit {
     const id = this.id();
     this.api.get<Programme>(`/programmes/${id}`).subscribe((p) => this.programme.set(p));
     this.api.get<Row[]>(`/programmes/${id}/targets`).subscribe((t) => this.targets.set(t));
+    this.lookups.geoUnits().subscribe((g) => this.geoNames.set(Object.fromEntries(g.map((u) => [u.id, u.name]))));
     this.api.get<Row[]>(`/programmes/${id}/reporting-periods`).subscribe((t) => this.periods.set(t));
     this.api.get<Row[]>(`/programmes/${id}/organisations`).subscribe((t) => this.orgs.set(t));
   }
@@ -166,6 +170,7 @@ export class ProgrammeDetailPage implements OnInit {
   }
 
   protected async editTarget(row?: Row): Promise<void> {
+    if (row) return this.changeTarget(row);
     const fields: FieldDef[] = [
       { name: 'metric_code', label: 'Metric code', type: 'text', required: true },
       { name: 'metric_name', label: 'Metric name', type: 'text', required: true },
@@ -179,10 +184,40 @@ export class ProgrammeDetailPage implements OnInit {
       { name: 'source_note', label: 'Source / approval note', type: 'textarea' },
     ];
     const saved = await openForm(this.dialog, {
-      title: row ? 'Edit target' : 'Add target', fields: row ? fields.filter((f) => f.name !== 'metric_code') : fields,
-      value: row ?? { status: 'proposed', target_version: 1 },
-      submit: (v) => firstValueFrom(row ? this.api.patch(`/programme-targets/${row['id']}`, v)
-        : this.api.post(`/programmes/${this.id()}/targets`, v)),
+      title: 'Add target', fields, value: { status: 'proposed', target_version: 1 },
+      submit: (v) => firstValueFrom(this.api.post(`/programmes/${this.id()}/targets`, v)),
+    });
+    if (saved) this.load();
+  }
+
+  /** Existing target: edit its description/status, or record a changed figure as a new version (never overwritten). */
+  private async changeTarget(row: Row): Promise<void> {
+    const revising = (v: Record<string, any>) => !!v['revise'];
+    const fields: FieldDef[] = [
+      { name: 'metric_name', label: 'Metric name', type: 'text', required: true },
+      { name: 'indicator_code', label: 'Linked indicator code', type: 'text', showIf: (v) => !revising(v) },
+      { name: 'revise', label: 'Change the target figure (saved as a new version; this version is kept)', type: 'boolean',
+        full: true },
+      { name: 'target_value', label: 'New target value', type: 'number', required: true, showIf: revising },
+      { name: 'unit', label: 'Unit', type: 'text', required: true, showIf: revising },
+      { name: 'period_label', label: 'Period', type: 'text', showIf: revising },
+      { name: 'status', label: 'Status', type: 'select', required: true, options: ['proposed', 'approved', 'revised'] },
+      { name: 'source_note', label: 'Source / approval note', type: 'textarea',
+        hint: 'For a new version, say why the figure changed and who approved it' },
+    ];
+    const saved = await openForm(this.dialog, {
+      title: `Target: ${row['metric_name']} (version ${row['target_version']})`, fields,
+      value: { ...row, revise: false },
+      submit: (v) => {
+        if (!revising(v)) {
+          const { revise, ...changes } = v;
+          return firstValueFrom(this.api.patch(`/programme-targets/${row['id']}`, changes));
+        }
+        return firstValueFrom(this.api.post(`/programme-targets/${row['id']}/revise`, {
+          target_value: v['target_value'], unit: v['unit'], period_label: v['period_label'],
+          status: v['status'] === 'proposed' ? 'revised' : v['status'], source_note: v['source_note'] ?? '',
+        }));
+      },
     });
     if (saved) this.load();
   }

@@ -2,13 +2,18 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, map, of, shareReplay, tap } from 'rxjs';
 
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 import { GeoUnit, Indicator, Organisation, Page, Programme, RecordType, ReportingPeriod, Workstream } from './models';
 
-/** Cached reference lists used by forms and filters. Call refresh() after editing master data. */
+/** Cached reference lists used by forms and filters. Call refresh() after editing master data.
+ * The lists depend on the signed-in user's scope, so the cache belongs to one user and is dropped when the user changes
+ * (sign-out, or another person signing in in the same tab). */
 @Injectable({ providedIn: 'root' })
 export class LookupsService {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private cache = new Map<string, Observable<any>>();
+  private cacheOwner: string | null = null;
 
   readonly programmes = signal<Programme[]>([]);
   readonly currentProgrammeId = signal<string | null>(null);
@@ -17,6 +22,13 @@ export class LookupsService {
   );
 
   private cached<T>(key: string, factory: () => Observable<T>): Observable<T> {
+    const owner = this.auth.me()?.id ?? null;
+    if (owner !== this.cacheOwner) {
+      this.cache.clear();
+      this.programmes.set([]);
+      this.currentProgrammeId.set(null);
+      this.cacheOwner = owner;
+    }
     if (!this.cache.has(key)) this.cache.set(key, factory().pipe(shareReplay(1)));
     return this.cache.get(key)!;
   }
