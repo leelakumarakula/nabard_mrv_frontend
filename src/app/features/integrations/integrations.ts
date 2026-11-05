@@ -46,6 +46,9 @@ export class IntegrationsPage implements OnInit {
   }
 
   protected async create(): Promise<void> {
+    // Pull adapters from the catalogue bring their default config and mock flag; they need the programme code.
+    const catalogue = await firstValueFrom(this.api.get<Row[]>('/integrations/catalogue'));
+    const entry = (code: unknown) => catalogue.find((c) => c['adapter_code'] === code);
     const saved = await openForm<Row>(this.dialog, {
       title: 'Register integration source',
       fields: [
@@ -54,15 +57,25 @@ export class IntegrationsPage implements OnInit {
         { name: 'module_code', label: 'Workstream', type: 'lookup', lookup: 'module' },
         { name: 'source_type', label: 'Type', type: 'select', required: true, options: ['rest_push', 'rest_pull', 'file_exchange'] },
         { name: 'adapter_code', label: 'Adapter', type: 'select', required: true,
-          options: ['push_only', 'unconfigured_rest', 'mock_water_meter', 'mock_iot_gateway'] },
-        { name: 'is_mock', label: 'Mock / demo source', type: 'boolean' },
+          options: ['push_only', 'unconfigured_rest', 'mock_water_meter', 'mock_iot_gateway',
+            ...catalogue.map((c) => c['adapter_code'] as string)] },
+        { name: 'programme_code', label: 'Programme code (pull adapters)', type: 'text',
+          hint: 'Programme the pulled records belong to, e.g. the code on the Programmes page' },
+        { name: 'is_mock', label: 'Mock / demo source', type: 'boolean', hint: 'Set automatically for catalogue adapters' },
         { name: 'auth_type', label: 'Authentication', type: 'select', options: ['api_key', 'oauth2', 'basic', 'none'] },
         { name: 'base_url_env_var', label: 'Base URL environment variable', type: 'text', hint: 'Secrets/URLs live in environment config' },
         { name: 'owner', label: 'Owner', type: 'text' },
         { name: 'availability_note', label: 'Availability / contract status', type: 'textarea' },
       ],
       value: { source_type: 'rest_push', adapter_code: 'push_only', auth_type: 'api_key' },
-      submit: (v) => firstValueFrom(this.api.post('/integrations/sources', v)),
+      submit: (v) => {
+        const { programme_code, ...body } = v;
+        const e = entry(body['adapter_code']);
+        const payload = e
+          ? { ...body, source_type: 'rest_pull', is_mock: e['is_mock'], config: { ...e['config'], programme_code } }
+          : body;
+        return firstValueFrom(this.api.post('/integrations/sources', payload));
+      },
     });
     if (saved?.['source_code']) this.router.navigate(['/integrations', saved['source_code']]);
   }
@@ -76,6 +89,9 @@ export class IntegrationsPage implements OnInit {
       <app-page-header [title]="s['name']" [subtitle]="s['source_code'] + ' · ' + s['connection_status']" back="/integrations">
         <ng-container badges>@if (s['is_mock']) {<span class="badge tone-demo">MOCK</span>}<app-status [status]="s['enabled'] ? 'active' : 'inactive'" /></ng-container>
         @if (auth.has('integration.manage')) {
+          @if (s['adapter_code'] === 'farmfuture_water_engine' && auth.has('farmer.manage')) {
+            <button mat-stroked-button (click)="importFarms()"><mat-icon>download</mat-icon> Import farms from FarmFuture</button>
+          }
           @if (s['source_type'] === 'rest_pull') {<button mat-flat-button (click)="pull()"><mat-icon>sync</mat-icon> Run pull</button>}
           <button mat-stroked-button (click)="testPayload()"><mat-icon>science</mat-icon> Test payload</button>
           <button mat-stroked-button (click)="edit(s)"><mat-icon>edit</mat-icon> Edit</button>
@@ -165,6 +181,28 @@ export class SourceDetailPage implements OnInit {
     });
   }
 
+  protected async importFarms(): Promise<void> {
+    const out = await openForm<Row>(this.dialog, {
+      title: 'Import farms from FarmFuture',
+      submitLabel: 'Import',
+      notice: 'Reads the estates and farms this token can see (read-only) and creates one farmer per estate and one farm ' +
+        'with one plot per FarmFuture farm, linked by identity maps. FarmFuture has no consent, enrolment, household or ' +
+        'programme geography: imported farmers have consent "not recorded" and no enrolment until programme staff record them.',
+      fields: [
+        { name: 'geo_unit_id', label: 'Place imported farmers in (cluster/district)', type: 'lookup', lookup: 'geo', required: true },
+        { name: 'primary_fpo_id', label: 'Primary FPO (optional)', type: 'lookup', lookup: 'fpo' },
+        { name: 'test_label', label: 'Mark as TEST (not programme beneficiaries)', type: 'boolean' },
+      ],
+      value: { test_label: true },
+      submit: (v) => firstValueFrom(this.api.post<Row>(`/integrations/sources/${this.code()}/import-farms`, v)),
+    });
+    if (!out) return;
+    const skipped = out['skipped']?.length ? `; ${out['skipped'].length} skipped` : '';
+    this.notify.success(`Imported ${out['farmers_created']} farmers and ${out['farms_created']} farms ` +
+      `(${out['already_imported']} already imported${skipped})`);
+    this.ngOnInit();
+  }
+
   protected async testPayload(): Promise<void> {
     const out = await openForm<Row>(this.dialog, {
       title: 'Test sample payload (dry run – nothing is saved)',
@@ -180,13 +218,17 @@ export class SourceDetailPage implements OnInit {
   }
 
   protected async edit(s: Row): Promise<void> {
+    const catalogue = await firstValueFrom(this.api.get<Row[]>('/integrations/catalogue'));
     const saved = await openForm(this.dialog, {
       title: `Edit ${s['source_code']}`, value: s,
       fields: [
         { name: 'name', label: 'Name', type: 'text', required: true },
         { name: 'module_code', label: 'Workstream', type: 'lookup', lookup: 'module' },
+        { name: 'source_type', label: 'Type', type: 'select', required: true, options: ['rest_push', 'rest_pull', 'file_exchange'],
+          hint: 'Catalogue adapters fetch data themselves – use rest_pull' },
         { name: 'adapter_code', label: 'Adapter', type: 'select', required: true,
-          options: ['push_only', 'unconfigured_rest', 'mock_water_meter', 'mock_iot_gateway'] },
+          options: ['push_only', 'unconfigured_rest', 'mock_water_meter', 'mock_iot_gateway',
+            ...catalogue.map((c) => c['adapter_code'] as string)] },
         { name: 'enabled', label: 'Enabled (accepts data / runs pulls)', type: 'boolean' },
         { name: 'auth_type', label: 'Authentication', type: 'select', options: ['api_key', 'oauth2', 'basic', 'none'] },
         { name: 'base_url_env_var', label: 'Base URL environment variable', type: 'text', hint: 'Secrets/URLs live in environment config' },
