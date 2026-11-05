@@ -16,6 +16,13 @@ import { Notice, PageHeader } from '../../shared/page-header';
 import { COLOUR_MODES, ColourMode, markerColour } from './map-colours';
 import { Basemap, MapView } from './map-view';
 
+const OUTLINE_REASONS: Record<string, string> = {
+  not_linked: 'This plot is not linked to a FarmFuture farm – only its GPS point is known.',
+  no_profile: 'FarmFuture has no farm map for this farm yet – only its GPS point is known.',
+  no_boundary: 'No farm boundary is drawn in FarmFuture for this farm yet.',
+  not_configured: 'The FarmFuture connection is not set up on the server.',
+};
+
 @Component({
   selector: 'app-plot-map',
   imports: [PageHeader, Notice, MapView, FormsModule, MatFormFieldModule, MatSelectModule, MatButtonToggleModule,
@@ -61,7 +68,7 @@ import { Basemap, MapView } from './map-view';
     <div class="map-layout">
       <div class="map-stage">
         <app-map-view #mapView [plots]="plots()" [mode]="mode()" [threeD]="threeD()" [basemap]="basemap()" [columns]="columns()"
-          [(autoRotate)]="rotating" [selectedId]="selected()?.['id'] ?? null" (plotClick)="select($event)" />
+          [(autoRotate)]="rotating" [selectedId]="selected()?.['id'] ?? null" [outline]="outline()" (plotClick)="select($event)" />
         <div class="map-float map-actions">
           <button mat-stroked-button type="button" [class.on]="rotating()" (click)="rotating.set(!rotating())"
             [attr.aria-pressed]="rotating()"><mat-icon>{{ rotating() ? 'pause_circle' : '360' }}</mat-icon>
@@ -87,7 +94,7 @@ import { Basemap, MapView } from './map-view';
               @if (p['is_demo']) {<span class="badge tone-demo">DEMO</span>}
               <span class="spacer"></span>
               <button mat-icon-button type="button" (click)="mapView.flyTo(p)" aria-label="Zoom to plot"><mat-icon>my_location</mat-icon></button>
-              <button mat-icon-button type="button" (click)="selected.set(null)" aria-label="Close"><mat-icon>close</mat-icon></button>
+              <button mat-icon-button type="button" (click)="clearSelection()" aria-label="Close"><mat-icon>close</mat-icon></button>
             </div>
             <a [routerLink]="['/farmers', p['farmer_id']]">{{ p['farmer_label'] }}</a>
             <div class="muted small">{{ p['village'] ?? '' }} {{ p['area_label'] ?? '' }}</div>
@@ -97,10 +104,29 @@ import { Basemap, MapView } from './map-view';
               <span><mat-icon>spa</mat-icon>{{ label(p['plantation_stage']) }}</span>
             </div>
           </div>
+          <section class="info-card"><h5><mat-icon>crop_free</mat-icon>Farm outline</h5>
+            @switch (outlineState()) {
+              @case ('loading') {<div class="muted">Loading the farm outline from FarmFuture…</div>}
+              @case ('shown') {
+                <div>Real farm boundary from FarmFuture{{ blockCount() ? ' · ' + blockCount() + ' blocks' : '' }}</div>
+                @if (outline()?.['terrain']; as t) {
+                  <div class="plot-facts">
+                    @if (t['elevation_mean_m'] != null) {<span><mat-icon>landscape</mat-icon>{{ num(t['elevation_mean_m'], 0) }} m</span>}
+                    @if (t['slope_mean_deg'] != null) {<span><mat-icon>trending_up</mat-icon>slope {{ num(t['slope_mean_deg']) }}° {{ t['slope_class'] ?? '' }}</span>}
+                    @if (t['aspect']) {<span><mat-icon>explore</mat-icon>faces {{ t['aspect'] }}</span>}
+                  </div>
+                }
+                <div class="muted small">Read live for this view – not stored on the platform.</div>
+              }
+              @case ('restricted') {<div class="muted">Exact farm outlines are shown only to roles that may see precise locations.</div>}
+              @case ('error') {<div class="muted">FarmFuture could not be reached – showing the GPS point only.</div>}
+              @default {<div class="muted">{{ outlineReason() }}</div>}
+            }
+          </section>
           <section class="info-card"><h5><mat-icon>task_alt</mat-icon>Practice progress</h5>
             <div>{{ label(p['practice_stage']) }} @for (c of counts(p); track c[0]) {<span class="muted"> · {{ label(c[0]) }} {{ c[1] }}</span>}</div>
           </section>
-          <section class="info-card"><h5><mat-icon>partly_cloudy_day</mat-icon>Weather (latest estimate)</h5>
+          <section class="info-card"><h5><mat-icon>wb_cloudy</mat-icon>Weather (latest estimate)</h5>
             @if (p['weather']; as w) {
               <div class="metric-trio">
                 <div><strong>{{ num(w['rainfall_mm']) }}</strong><span>mm rain</span></div>
@@ -144,6 +170,7 @@ import { Basemap, MapView } from './map-view';
               <li><mat-icon>3d_rotation</mat-icon><span><strong>Right-drag</strong> (or Ctrl + drag) to rotate and tilt; the compass resets north</span></li>
               <li><mat-icon>360</mat-icon><span><strong>Rotate</strong> orbits the camera – touch the map to stop</span></li>
               <li><mat-icon>bar_chart</mat-icon><span><strong>3D columns</strong> raise each plot by the colour scale</span></li>
+              <li><mat-icon>crop_free</mat-icon><span>Clicking a FarmFuture plot draws its <strong>real farm boundary</strong></span></li>
             </ul>
           </div>
         }
@@ -205,6 +232,11 @@ export class PlotMapPage implements OnInit {
   protected readonly rotating = signal(false);
   protected readonly data = signal<Row | null>(null);
   protected readonly selected = signal<Row | null>(null);
+  protected readonly outline = signal<Row | null>(null);
+  protected readonly outlineState = signal<'loading' | 'shown' | 'missing' | 'restricted' | 'error'>('missing');
+  protected readonly blockCount = computed(() => (this.outline()?.['blocks'] ?? []).length);
+  private readonly reasonCode = signal('no_boundary');
+  protected readonly outlineReason = computed(() => OUTLINE_REASONS[this.reasonCode()] ?? OUTLINE_REASONS['no_boundary']);
   protected readonly plots = computed<Row[]>(() => this.data()?.['plots'] ?? []);
   protected readonly legend = computed(() => COLOUR_MODES.find((m) => m.value === this.mode())!.legend);
   protected readonly modeLabel = computed(() => COLOUR_MODES.find((m) => m.value === this.mode())!.label);
@@ -227,13 +259,33 @@ export class PlotMapPage implements OnInit {
 
   protected load(): void {
     const id = this.programmeId() === 'all' ? null : this.programmeId();
-    this.selected.set(null);
+    this.clearSelection();
     this.api.get<Row>('/map/plots', id ? { programme_id: id } : {}).subscribe((d) => this.data.set(d));
   }
 
   protected select(plot: Row): void {
     this.selected.set(plot);
+    this.outline.set(null);
     this.view().flyTo(plot);
+    if (!this.data()?.['precise_locations']) {
+      this.outlineState.set('restricted');
+      return;
+    }
+    this.outlineState.set('loading');
+    this.api.get<Row>(`/map/plots/${plot['id']}/boundary`).subscribe({
+      next: (b) => {
+        if (this.selected() !== plot) return;  // another plot was clicked meanwhile
+        this.reasonCode.set(b['reason'] ?? 'no_boundary');
+        this.outline.set(b['available'] ? b : null);
+        this.outlineState.set(b['available'] ? 'shown' : 'missing');
+      },
+      error: () => this.outlineState.set('error'),
+    });
+  }
+
+  protected clearSelection(): void {
+    this.selected.set(null);
+    this.outline.set(null);
   }
 
   protected colour(plot: Row): string {

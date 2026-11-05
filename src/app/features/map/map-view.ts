@@ -33,12 +33,22 @@ const STYLE: StyleSpecification = {
     'hillshade-dem': { type: 'raster-dem', tiles: [TERRAIN_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15 },
     plots: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
     columns: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    farm: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
   },
   layers: [
     { id: 'osm', type: 'raster', source: 'osm' },
     { id: 'satellite', type: 'raster', source: 'satellite', layout: { visibility: 'none' } },
     { id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', layout: { visibility: 'none' },
       paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#24331f', 'hillshade-highlight-color': '#ffffff' } },
+    // The selected plot's real farm outline (and its blocks) when the source system has one
+    { id: 'farm-fill', type: 'fill', source: 'farm', filter: ['==', ['get', 'part'], 'farm'],
+      paint: { 'fill-color': ['get', 'colour'], 'fill-opacity': 0.32 } },
+    { id: 'farm-blocks', type: 'line', source: 'farm', filter: ['==', ['get', 'part'], 'block'],
+      paint: { 'line-color': '#ffffff', 'line-width': 1.2, 'line-opacity': 0.85 } },
+    { id: 'farm-casing', type: 'line', source: 'farm', filter: ['==', ['get', 'part'], 'farm'],
+      layout: { 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 5 } },
+    { id: 'farm-line', type: 'line', source: 'farm', filter: ['==', ['get', 'part'], 'farm'],
+      layout: { 'line-join': 'round' }, paint: { 'line-color': ['get', 'colour'], 'line-width': 2.5 } },
     { id: 'columns', type: 'fill-extrusion', source: 'columns', layout: { visibility: 'none' },
       paint: { 'fill-extrusion-color': ['get', 'colour'], 'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-base': 0,
         'fill-extrusion-opacity': 0.88, 'fill-extrusion-vertical-gradient': true } },
@@ -60,9 +70,12 @@ const STYLE: StyleSpecification = {
   ],
 };
 
-const COLUMN_HALF_DEG = 0.0025;  // ~550 m square footprint around each plot point
+const COLUMN_RADIUS_DEG = 0.0016;  // ~180 m round pillar – a chart mark, deliberately not shaped like a land parcel
 const COLUMN_MAX_M = 2400;
 const TILT_3D = 62;
+const TERRAIN_EXAGGERATION = 1.3;
+const FARM_ZOOM_3D = 15.5;  // farm close-up in 3D
+const FARM_TILT_3D = 45;
 
 /** Interactive MapLibre view of located plots: 2D/3D terrain, rotation, basemaps and optional 3D columns. */
 @Component({
@@ -71,7 +84,8 @@ const TILT_3D = 62;
     <div #mapEl class="map-gl"></div>
     @if (failed()) {
       <div class="map-fallback"><strong>The map could not start.</strong>
-        <span>This browser has WebGL turned off or unavailable – enable hardware acceleration to see the map.</span></div>
+        <span>The browser's map graphics (WebGL) are off or stopped – reload the page; if it keeps happening, enable hardware
+          acceleration or close other heavy tabs.</span></div>
     }`,
   styles: `
     :host { display: block; position: relative; height: 100%; min-height: 240px; border-radius: inherit; overflow: hidden;
@@ -92,6 +106,8 @@ export class MapView implements AfterViewInit, OnDestroy {
   /** One colour for every point (overview maps) instead of the colour-by scale. */
   readonly pointColour = input<string | null>(null);
   readonly tilt = input(TILT_3D);
+  /** Real outline of the selected plot's farm ({boundary, blocks} rings in [lon, lat]) – drawn and framed when set. */
+  readonly outline = input<Row | null>(null);
   readonly plotClick = output<Row>();
 
   protected readonly failed = signal(false);
@@ -111,6 +127,7 @@ export class MapView implements AfterViewInit, OnDestroy {
     effect(() => this.drawPlots(this.plots(), this.mode(), this.ready()));
     effect(() => this.applyView(this.threeD(), this.basemap(), this.columns(), this.ready()));
     effect(() => this.highlight(this.selectedId(), this.plots(), this.ready()));
+    effect(() => this.drawOutline(this.outline(), this.selectedId(), this.mode(), this.ready()));
     effect(() => (this.autoRotate() && this.ready() ? this.startRotation() : this.stopRotation()));
   }
 
@@ -132,6 +149,9 @@ export class MapView implements AfterViewInit, OnDestroy {
         map.addControl(new FullscreenControl({ container: this.host.nativeElement }), 'top-right');
         map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left');
       }
+      // The browser can drop map graphics (GPU reset, low memory); say so instead of leaving an empty frame
+      map.on('webglcontextlost', () => this.zone.run(() => this.failed.set(true)));
+      map.on('webglcontextrestored', () => this.zone.run(() => this.failed.set(false)));
       map.on('load', () => {
         // Credits start folded behind the (i) button rather than covering the bottom of the map
         map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
@@ -182,15 +202,20 @@ export class MapView implements AfterViewInit, OnDestroy {
       type: 'Feature' as const, id: i, geometry: { type: 'Point' as const, coordinates: [p['longitude'], p['latitude']] },
       properties: { colour: this.pointColour() ?? markerColour(p, mode) },
     }));
-    const columns = plots.map((p, i) => {
+    // Plots with no data on the chosen scale get no pillar at all
+    const columns = plots.flatMap((p, i) => {
+      const level = legendLevel(p, mode);
+      if (!level) return [];
       const lat = p['latitude'], lon = p['longitude'];
-      const dLon = COLUMN_HALF_DEG / Math.max(Math.cos((lat * Math.PI) / 180), 0.2);
-      return {
-        type: 'Feature' as const, id: i,
-        geometry: { type: 'Polygon' as const, coordinates: [[[lon - dLon, lat - COLUMN_HALF_DEG], [lon + dLon, lat - COLUMN_HALF_DEG],
-          [lon + dLon, lat + COLUMN_HALF_DEG], [lon - dLon, lat + COLUMN_HALF_DEG], [lon - dLon, lat - COLUMN_HALF_DEG]]] },
-        properties: { colour: markerColour(p, mode), height: 40 + legendLevel(p, mode) * COLUMN_MAX_M },
-      };
+      const dLon = COLUMN_RADIUS_DEG / Math.max(Math.cos((lat * Math.PI) / 180), 0.2);
+      const ring = Array.from({ length: 21 }, (_, k) => {
+        const a = (k % 20) * (Math.PI / 10);
+        return [lon + dLon * Math.cos(a), lat + COLUMN_RADIUS_DEG * Math.sin(a)];
+      });
+      return [{
+        type: 'Feature' as const, id: i, geometry: { type: 'Polygon' as const, coordinates: [ring] },
+        properties: { colour: markerColour(p, mode), height: level * COLUMN_MAX_M },
+      }];
     });
     (map.getSource('plots') as GeoJSONSource).setData({ type: 'FeatureCollection', features });
     (map.getSource('columns') as GeoJSONSource).setData({ type: 'FeatureCollection', features: columns });
@@ -206,6 +231,38 @@ export class MapView implements AfterViewInit, OnDestroy {
       if (camera) map.easeTo({ ...camera, pitch: this.threeD() ? this.tilt() : 0, bearing: bearing ?? map.getBearing(), duration: 1200 });
     } else if (bearing !== undefined) {
       map.easeTo({ bearing, pitch: this.threeD() ? this.tilt() : 0, duration: 800 });
+    }
+  }
+
+  private drawOutline(outline: Row | null, selectedId: string | null, mode: ColourMode, ready: boolean): void {
+    const map = this.map;
+    if (!map || !ready) return;
+    const plot = this.plots().find((p) => p['id'] === selectedId);
+    const rings: number[][][] = outline?.['boundary'] ? [outline['boundary']] : [];
+    const colour = plot ? this.pointColour() ?? markerColour(plot, mode) : '#004225';
+    const features = [
+      ...rings.map((ring) => ({ type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [ring] },
+        properties: { part: 'farm', colour } })),
+      ...(rings.length ? (outline?.['blocks'] ?? []) as number[][][] : []).map((ring) => ({
+        type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: ring }, properties: { part: 'block', colour } })),
+    ];
+    (map.getSource('farm') as GeoJSONSource).setData({ type: 'FeatureCollection', features });
+    // The selected plot's own pillar would hide its outline
+    const index = plot ? this.plots().indexOf(plot) : -1;
+    map.setFilter('columns', rings.length && index >= 0 ? ['!=', ['id'], index] : null);
+    if (rings.length) {
+      const bounds = new LngLatBounds();
+      for (const [lon, lat] of rings[0]) bounds.extend([lon, lat]);
+      // Frame the outline as seen from straight above, then tilt: a camera solved for the tilted terrain view can
+      // come back unusable at farm scale and leave the map blank.
+      const camera = map.cameraForBounds(bounds, { padding: 90, maxZoom: 17, bearing: 0, pitch: 0 });
+      const zoom = Number(camera?.zoom);
+      if (camera?.center && Number.isFinite(zoom)) {
+        // In 3D the camera stays higher and less tilted: on steep estates a low, tilted camera ends up inside the
+        // neighbouring hillside and the whole map goes blank.
+        map.flyTo({ center: camera.center, zoom: this.threeD() ? Math.min(zoom, FARM_ZOOM_3D) : zoom,
+          pitch: this.threeD() ? Math.min(this.tilt(), FARM_TILT_3D) : 0, bearing: map.getBearing(), speed: 0.9 });
+      }
     }
   }
 
@@ -225,7 +282,7 @@ export class MapView implements AfterViewInit, OnDestroy {
     map.setPaintProperty('hillshade', 'hillshade-exaggeration', basemap === 'light' ? 0.3 : 0.45);
     show('columns', threeD && columns);
     if (threeD) {
-      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.6 });
+      map.setTerrain({ source: 'terrain-dem', exaggeration: TERRAIN_EXAGGERATION });
       map.setSky({ 'sky-color': '#9fd0f0', 'horizon-color': '#e8f4ea', 'fog-color': '#eef6ee', 'sky-horizon-blend': 0.6,
         'horizon-fog-blend': 0.4, 'fog-ground-blend': 0.5, 'atmosphere-blend': 0.6 });
       if (Math.abs(map.getPitch() - this.tilt()) > 5) map.easeTo({ pitch: this.tilt(), duration: 1000 });
