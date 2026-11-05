@@ -39,6 +39,7 @@ const NAV: NavGroup[] = [
       { label: 'Geography', icon: 'account_tree', link: '/geography', perm: 'geo.read' },
       { label: 'FPOs & organisations', icon: 'groups', link: '/organisations', perm: 'org.read' },
       { label: 'Farmers & plots', icon: 'agriculture', link: '/farmers', perm: 'farmer.read' },
+      { label: 'Farm map', icon: 'map', link: '/map', perm: 'farmer.read' },
     ],
   },
   {

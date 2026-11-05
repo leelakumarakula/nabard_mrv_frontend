@@ -26,6 +26,7 @@ export const routes: Routes = [
       { path: 'organisations', ...f('org.read'), loadComponent: () => import('./features/registry/organisations').then((m) => m.OrganisationsPage) },
       { path: 'organisations/:id', ...f('org.read'), loadComponent: () => import('./features/registry/organisations').then((m) => m.OrganisationDetailPage) },
       { path: 'farmers', ...f('farmer.read'), loadComponent: () => import('./features/registry/farmers').then((m) => m.FarmersPage) },
+      { path: 'map', ...f('farmer.read'), loadComponent: () => import('./features/map/plot-map').then((m) => m.PlotMapPage) },
       { path: 'farmers/:id', ...f('farmer.read'), loadComponent: () => import('./features/registry/farmer-detail').then((m) => m.FarmerDetailPage) },
 
       { path: 'modules/:code', ...f('module.read'), loadComponent: () => import('./features/modules/module-page').then((m) => m.ModulePage) },
