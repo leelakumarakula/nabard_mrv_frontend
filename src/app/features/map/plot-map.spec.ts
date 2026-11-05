@@ -1,4 +1,4 @@
-import { COLOUR_MODES, legendKey, markerColour } from './plot-map';
+import { COLOUR_MODES, legendKey, legendLevel, markerColour } from './map-colours';
 
 describe('farm map colours', () => {
   const plot = {
@@ -23,5 +23,13 @@ describe('farm map colours', () => {
       const keys = mode.legend.map((l) => l.colour);
       expect(keys).toContain(markerColour(plot, mode.value));
     }
+  });
+
+  it('raises 3D columns by the legend scale, highest class tallest', () => {
+    expect(legendLevel(plot, 'pest')).toBe(1);  // very high risk
+    expect(legendLevel({ pest_risk: { risk_level: 'low' } }, 'pest')).toBe(0.25);
+    expect(legendLevel({ practice_stage: 'verified' }, 'practice')).toBe(1);
+    expect(legendLevel(plot, 'ndvi')).toBe(0.75);
+    expect(legendLevel({}, 'rain')).toBe(0);
   });
 });
