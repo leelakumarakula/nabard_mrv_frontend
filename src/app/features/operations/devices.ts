@@ -16,7 +16,7 @@ import { openForm } from '../../shared/form-dialog';
 import { ListState } from '../../shared/list-state';
 import { Notice, PageHeader } from '../../shared/page-header';
 
-const DEVICE_TYPES = ['soilsync_7in1', 'moisture_probe', 'microclime', 'rainsync', 'other'];
+const DEVICE_TYPES = ['soilsync_7in1', 'moisture_probe', 'microclime', 'rainsync', 'analogue_weather', 'other'];
 
 @Component({
   selector: 'app-devices',
@@ -26,7 +26,8 @@ const DEVICE_TYPES = ['soilsync_7in1', 'moisture_probe', 'microclime', 'rainsync
       @if (auth.has('module.write')) {<button mat-flat-button (click)="create()"><mat-icon>add</mat-icon> Register device</button>}
     </app-page-header>
     <app-notice>The programme planning ceiling is up to 1,200 devices; the final equipment schedule, models and protocols are
-      pending confirmation. Each device type reports only the parameters it supports.</app-notice>
+      pending confirmation. Each device type reports only the parameters it supports. "Data days" counts the days with at
+      least one stored reading in the last 30 days (since installation) – the basis for data-completeness reporting.</app-notice>
     <app-table [columns]="columns" [rows]="list.rows()" [total]="list.total()" [pageIndex]="list.pageIndex()"
                [pageSize]="list.pageSize()" [loading]="list.loading()" (page)="list.onPage($event)"
                (rowClick)="router.navigate(['/devices', $event['id']])" />`,
@@ -39,7 +40,13 @@ export class DevicesPage implements OnInit {
   protected readonly columns: Column[] = [
     { key: 'device_code', label: 'Device' }, { key: 'device_type', label: 'Type', kind: 'label' },
     { key: 'farm_plot', label: 'Plot', kind: 'ref' }, { key: 'geo_unit', label: 'Area', kind: 'ref' },
-    { key: 'status', label: 'Status', kind: 'status' }, { key: 'last_calibrated_on', label: 'Calibrated', kind: 'date' },
+    { key: 'status', label: 'Status', kind: 'status' },
+    { key: 'last_reading_at', label: 'Last reading', kind: 'datetime' },
+    { key: 'completeness_pct', label: 'Data days (30 d)',
+      value: (r) => (r['expected_days_30'] ? `${r['reporting_days_30']}/${r['expected_days_30']} (${Math.round(r['completeness_pct'])} %)` : '—') },
+    { key: 'battery_pct', label: 'Battery', value: (r) => (r['battery_pct'] != null ? `${Math.round(r['battery_pct'])} %` : '—') },
+    { key: 'signal_csq', label: 'Signal', value: (r) => (r['signal_csq'] != null ? `${r['signal_csq']} / 31` : '—') },
+    { key: 'last_calibrated_on', label: 'Calibrated', kind: 'date' },
     { key: 'calibration_due_on', label: 'Calibration due', kind: 'date' },
   ];
   protected readonly list = new ListState((page, size) => this.api.get<Page<Row>>('/devices', { page, page_size: size }));

@@ -31,11 +31,17 @@ const SETTING_INFO: Record<string, Partial<FieldDef>> = {
     hint: 'The series used for reporting is a pending programme decision (FARMFUTURE_SENSOR_UNITS); each reading records its series' },
   horizon_days: { label: 'Forecast horizon (days)', min: 1, max: 14 },
   history_days: { label: 'Earlier advisory runs to read', min: 0, max: 60 },
+  sensor_history_days: { label: 'Days of earlier sensor statistics to fill in', min: 0, max: 365,
+    hint: 'Only days not imported yet are added, so data completeness reflects what the devices really sent' },
   station_observations: { label: 'Import weather-station days' },
   forecast: { label: 'Import the 5-day forecast' },
   include_lab_reports: { label: 'Import soil lab reports' },
   include_reports_without_lab_name: { label: 'Also import reports that name no laboratory' },
   record_app_delivery: { label: 'Record app display as "sent" (never delivered/read)' },
+  device_health: { label: 'Import device health (battery, signal, last reading)' },
+  analogue_readings: { label: 'Import Analogue Weather latest readings' },
+  climate_normals: { label: 'Import 30-year climate normals' },
+  site_profile: { label: 'Import site characteristics (terrain, soil, erosion)' },
   max_farms: { label: 'Most farms per pull', min: 1, max: 1000 },
   timeout_seconds: { label: 'Request timeout (seconds)', min: 5, max: 120 },
   units: { label: 'Units FarmFuture does not state (JSON)' },
@@ -253,8 +259,8 @@ export class SourceDetailPage implements OnInit {
     const ok = await confirmAction(this.dialog, {
       title: 'Import devices from FarmFuture',
       message: 'Reads the devices installed on the FarmFuture farms already linked to platform plots (read-only) and ' +
-        'registers each SoilSync and MicroClime device on its plot, linked by an identity map. Hubs, air-quality and ' +
-        'analogue weather devices have no platform device type and are skipped.',
+        'registers each SoilSync, MicroClime and Analogue Weather device on its plot, linked by an identity map. Hubs and ' +
+        'air-quality devices have no platform device type and are skipped.',
       confirmLabel: 'Import' });
     if (!ok) return;
     this.api.post<Row>(`/integrations/sources/${this.code()}/import-devices`).subscribe((out) => {

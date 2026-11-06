@@ -77,6 +77,11 @@ interface Segment { key: string; count: number; share: number; fill: string; ink
             <div><div class="kpi-value">{{ n(d.coverage.farmers_enrolled) }}</div><div class="kpi-label">Enrolled with consent</div></div></div>
           <div class="kpi"><span class="kpi-icon"><mat-icon>diversity_3</mat-icon></span>
             <div><div class="kpi-value">{{ n(d.coverage.fpos) }}</div><div class="kpi-label">FPOs</div></div></div>
+          @if (d.devices?.active) {
+            <div class="kpi" [class.kpi-alert]="d.devices.reporting_7d < d.devices.active"><span class="kpi-icon"><mat-icon>sensors</mat-icon></span>
+              <div><div class="kpi-value">{{ n(d.devices.reporting_7d) }} / {{ n(d.devices.active) }}</div><div class="kpi-label">Devices reporting</div>
+                <div class="kpi-sub">Active devices with a reading in the last 7 days</div></div></div>
+          }
           @if (d.data_quality) {
             <div class="kpi" [class.kpi-alert]="exceptions(d) > 0"><span class="kpi-icon"><mat-icon>rule</mat-icon></span>
               <div><div class="kpi-value">{{ n(exceptions(d)) }}</div><div class="kpi-label">Data-quality exceptions</div>
