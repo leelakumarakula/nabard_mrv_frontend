@@ -272,6 +272,9 @@ a.feed-row:hover { background: var(--bg); }
   .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
   &.empty { opacity: .55; } }
 .rain-sub { margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+/* Coffee calendar (practices) */
+.calendar-panel { margin-bottom: 16px; }
+.calendar-controls { display: flex; gap: 12px; flex-wrap: wrap; mat-form-field { width: 160px; } }
 
 .target-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
 .target { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: linear-gradient(180deg, #fff, var(--bg)); }
