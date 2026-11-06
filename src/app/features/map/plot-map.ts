@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -126,15 +126,41 @@ const OUTLINE_REASONS: Record<string, string> = {
           <section class="info-card"><h5><mat-icon>task_alt</mat-icon>Practice progress</h5>
             <div>{{ label(p['practice_stage']) }} @for (c of counts(p); track c[0]) {<span class="muted"> · {{ label(c[0]) }} {{ c[1] }}</span>}</div>
           </section>
-          <section class="info-card"><h5><mat-icon>wb_cloudy</mat-icon>Weather (latest estimate)</h5>
-            @if (p['weather']; as w) {
+          @if (p['station']; as st) {
+            <section class="info-card"><h5><mat-icon>sensors</mat-icon>Farm weather station (latest day)</h5>
               <div class="metric-trio">
-                <div><strong>{{ num(w['rainfall_mm']) }}</strong><span>mm rain</span></div>
-                <div><strong>{{ num(w['temp_min_c']) }}–{{ num(w['temp_max_c']) }}</strong><span>°C</span></div>
-                <div><strong>{{ num(w['relative_humidity_pct']) }}</strong><span>% RH</span></div>
+                <div><strong>{{ num(st['rainfall_mm']) }}</strong><span>mm rain</span></div>
+                <div><strong>{{ num(st['temp_min_c']) }}–{{ num(st['temp_max_c']) }}</strong><span>°C</span></div>
+                <div><strong>{{ num(st['relative_humidity_pct']) }}</strong><span>% RH</span></div>
               </div>
-              <div class="muted small">{{ w['observed_at'] | date: 'd MMM y' }} · {{ w['source_name'] }} @if (w['is_demo']) {<span class="badge tone-demo">DEMO</span>}</div>
-            } @else {<div class="muted">No weather data – pull Open-Meteo or NASA POWER</div>}
+              <div class="muted small">{{ st['observed_at'] | date: 'd MMM y' }} · {{ st['source_name'] }}</div>
+            </section>
+          }
+          @if (p['weather'] || !p['station']) {
+            <section class="info-card"><h5><mat-icon>wb_cloudy</mat-icon>Gridded weather estimate</h5>
+              @if (p['weather']; as w) {
+                <div class="metric-trio">
+                  <div><strong>{{ num(w['rainfall_mm']) }}</strong><span>mm rain</span></div>
+                  <div><strong>{{ num(w['temp_min_c']) }}–{{ num(w['temp_max_c']) }}</strong><span>°C</span></div>
+                  <div><strong>{{ num(w['relative_humidity_pct']) }}</strong><span>% RH</span></div>
+                </div>
+                <div class="muted small">{{ w['observed_at'] | date: 'd MMM y' }} · {{ w['source_name'] }} @if (w['is_demo']) {<span class="badge tone-demo">DEMO</span>}</div>
+              } @else {<div class="muted">No weather data – pull Open-Meteo or NASA POWER</div>}
+            </section>
+          }
+          <section class="info-card"><h5><mat-icon>water</mat-icon>Rain vs 30-year normal</h5>
+            @if (p['rainfall']; as rs) {
+              <div class="metric-trio">
+                <div><strong>{{ num(rs['ytd_received_pct'], 0) }} %</strong><span>of usual since 1 Jan</span></div>
+                <div><strong>{{ num(rs['ytd_rain_mm'], 0) }}</strong><span>of {{ num(rs['ytd_normal_mm'], 0) }} mm</span></div>
+                <div><strong>{{ num(rs['month_received_pct'], 0) }} %</strong><span>this month</span></div>
+              </div>
+              <div>@if (rs['ytd_status'] === 'insufficient_data') {<strong>Too few days measured</strong> for a status this year}
+                @else {<strong>{{ label(rs['ytd_status']) }}</strong> rain this year}
+                · {{ rs['month_status'] === 'insufficient_data' ? 'too few days measured' : label(rs['month_status']) }} this month</div>
+              <div class="muted small">To {{ rs['as_of_date'] | date: 'd MMM y' }} · {{ rs['ytd_data_days'] }} of {{ rs['ytd_days'] }} days measured
+                · normal: {{ rs['normals_dataset'] }}</div>
+            } @else {<div class="muted">No rainfall status – run the "Rainfall status" calculation source</div>}
           </section>
           <section class="info-card"><h5><mat-icon>umbrella</mat-icon>Forecast</h5>
             @if (p['forecast']; as f) {
@@ -226,6 +252,8 @@ export class PlotMapPage implements OnInit {
   protected readonly programmes = signal<Programme[]>([]);
   protected readonly programmeId = signal<string>('all');
   protected readonly mode = signal<ColourMode>('practice');
+  /** Optional ?colour= query parameter (e.g. the dashboard's rainfall card opens the rainfall layer). */
+  readonly colourParam = input<string | undefined>(undefined, { alias: 'colour' });
   protected readonly threeD = signal(false);
   protected readonly basemap = signal<Basemap>('streets');
   protected readonly columns = signal(true);
@@ -253,6 +281,8 @@ export class PlotMapPage implements OnInit {
   protected readonly label = labelize;
 
   ngOnInit(): void {
+    const wanted = this.colourParam();
+    if (wanted && COLOUR_MODES.some((m) => m.value === wanted)) this.mode.set(wanted as ColourMode);
     this.lookups.loadProgrammes().subscribe((p) => this.programmes.set(p));
     this.load();
   }

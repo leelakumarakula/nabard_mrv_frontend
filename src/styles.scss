@@ -265,6 +265,13 @@ a.feed-row:hover { background: var(--bg); }
 .feed-icon mat-icon { font-size: 19px; width: 19px; height: 19px; }
 .empty-note { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 16px; border-radius: 12px;
   background: var(--bg); color: var(--muted); font-size: 0.88rem; }
+/* Rain vs 30-year normal (dashboard) */
+.rain-bands { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0 4px; }
+.rain-band { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--bg);
+  strong { font-size: 1.35rem; } span:last-child { color: var(--muted); font-size: .85rem; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  &.empty { opacity: .55; } }
+.rain-sub { margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
 
 .target-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
 .target { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: linear-gradient(180deg, #fff, var(--bg)); }

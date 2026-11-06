@@ -1,6 +1,6 @@
 import { Row } from '../../core/models';
 
-export type ColourMode = 'practice' | 'pest' | 'climate' | 'ndvi' | 'rain';
+export type ColourMode = 'practice' | 'pest' | 'climate' | 'rainfall' | 'ndvi' | 'rain';
 
 export interface LegendItem { key: string; label: string; colour: string }
 
@@ -17,6 +17,11 @@ export const COLOUR_MODES: { value: ColourMode; label: string; legend: LegendIte
     { key: 'none', label: 'No practice yet', colour: '#9e9e9e' }] },
   { value: 'pest', label: 'Current pest & disease risk', legend: RISK },
   { value: 'climate', label: 'Current climate risk', legend: RISK },
+  { value: 'rainfall', label: 'Rain vs 30-year normal (year to date)', legend: [
+    { key: 'extra', label: 'Extra rain (≥ 110 %)', colour: '#1565c0' }, { key: 'usual', label: 'Usual rain (90 – 110 %)', colour: '#43a047' },
+    { key: 'little_less', label: 'Little less (75 – 90 %)', colour: '#f9a825' }, { key: 'much_less', label: 'Much less (50 – 75 %)', colour: '#ef6c00' },
+    { key: 'very_much_less', label: 'Very much less (< 50 %)', colour: '#c62828' },
+    { key: 'insufficient_data', label: 'Too few days measured', colour: '#cfd8dc' }, NO_DATA] },
   { value: 'ndvi', label: 'Satellite greenness (NDVI)', legend: [
     { key: 'dense', label: '≥ 0.6 dense green canopy', colour: '#1b5e20' }, { key: 'moderate', label: '0.4 – 0.6', colour: '#7cb342' },
     { key: 'sparse', label: '0.2 – 0.4', colour: '#d4e157' }, { key: 'bare', label: '< 0.2 little vegetation', colour: '#a1887f' }, NO_DATA] },
@@ -31,6 +36,7 @@ export function legendKey(plot: Row, mode: ColourMode): string {
     case 'practice': return plot['practice_stage'] ?? 'none';
     case 'pest': return plot['pest_risk']?.['risk_level'] ?? 'none';
     case 'climate': return plot['climate_risk']?.['risk_level'] ?? 'none';
+    case 'rainfall': return plot['rainfall']?.['ytd_status'] ?? 'none';
     case 'ndvi': {
       const v = plot['ndvi']?.['index_value'];
       if (v === undefined || v === null) return 'none';
@@ -54,10 +60,12 @@ export function markerColour(plot: Row, mode: ColourMode): string {
  * Every legend lists its classes from the highest (or most advanced) down, then "no data".
  */
 export function legendLevel(plot: Row, mode: ColourMode): number {
-  const classes = COLOUR_MODES.find((m) => m.value === mode)!.legend.filter((l) => l.key !== 'none');
+  // "no data" and "too few days measured" are not a level on the scale: they stay flat
+  const classes = COLOUR_MODES.find((m) => m.value === mode)!.legend.filter((l) => l.key !== 'none' && l.key !== 'insufficient_data');
   const index = classes.findIndex((l) => l.key === legendKey(plot, mode));
   if (index < 0) return 0;
-  // Risk legends run low → very high, so their order is reversed: very high risk is the tallest column.
-  const rank = mode === 'pest' || mode === 'climate' ? index + 1 : classes.length - index;
+  // Risk legends run low → very high and rainfall runs extra → very much less, so their order is reversed: the most
+  // severe class (very high risk, very much less rain) is the tallest column.
+  const rank = mode === 'pest' || mode === 'climate' || mode === 'rainfall' ? index + 1 : classes.length - index;
   return rank / classes.length;
 }

@@ -16,6 +16,13 @@ const STATUS_FILL: Record<Tone, string> = {
   success: '#0ca30c', warning: '#fab219', danger: '#d03b3b', info: '#2a78d6', neutral: '#9aa3a0',
 };
 const STATUS_ORDER: Tone[] = ['success', 'neutral', 'info', 'warning', 'danger'];  // green and red never touch
+/** Rainfall status bands, wettest first – the same colours as the map's rainfall layer. */
+const RAIN_BANDS = [
+  { code: 'extra', label: 'Extra rain', colour: '#1565c0' }, { code: 'usual', label: 'Usual rain', colour: '#43a047' },
+  { code: 'little_less', label: 'Little less', colour: '#f9a825' }, { code: 'much_less', label: 'Much less', colour: '#ef6c00' },
+  { code: 'very_much_less', label: 'Very much less', colour: '#c62828' },
+  { code: 'insufficient_data', label: 'Too few days measured', colour: '#cfd8dc' },
+];
 const RISK_TONE: Record<string, Tone> = { low: 'success', moderate: 'warning', high: 'danger', very_high: 'danger' };
 
 /** Not yet validated reads as "waiting" (blue), so it never shares amber with exceptions. */
@@ -131,6 +138,34 @@ interface Segment { key: string; count: number; share: number; fill: string; ink
               </section>
             }
           </div>
+        }
+
+        @if (d.rainfall; as rf) {
+          <section class="dash-card span-12 rain-card">
+            <div class="panel-head"><h3><mat-icon>water</mat-icon>Rain vs 30-year normal · year to date</h3>
+              <a routerLink="/map" [queryParams]="{ colour: 'rainfall' }" class="small">On the map →</a></div>
+            <p class="muted small">Station rain compared with the plot's 30-year normal for the same days, to {{ rf.as_of | date: 'd MMM y' }}
+              · {{ rf.plots }} {{ rf.plots === 1 ? 'plot' : 'plots' }} · calculated by the platform (bands provisional)</p>
+            <div class="rain-bands">
+              @for (b of rainBands; track b.code) {
+                <div class="rain-band" [class.empty]="!rf.by_status[b.code]">
+                  <span class="dot" [style.background]="b.colour"></span>
+                  <strong>{{ rf.by_status[b.code] ?? 0 }}</strong><span>{{ b.label }}</span>
+                </div>
+              }
+            </div>
+            @if (rf.driest?.length) {
+              <h4 class="muted small rain-sub">Driest plots this year</h4>
+              @for (p of rf.driest; track p.record_id) {
+                <a class="feed-row" [routerLink]="['/records', p.record_id]">
+                  <span class="feed-icon" [style.color]="bandColour(p.ytd_status)"><mat-icon>water_drop</mat-icon></span>
+                  <span class="grow">{{ p.plot_code }} · <strong>{{ n(p.ytd_received_pct) }} %</strong> of usual rain
+                    <span class="muted small">({{ n(p.ytd_difference_mm) }} mm · {{ p.measured_days }} days measured)</span></span>
+                  <span class="muted small">{{ label(p.ytd_status) }}</span>
+                </a>
+              }
+            }
+          </section>
         }
 
         @if (d.progress?.length) {
@@ -308,6 +343,11 @@ export class DashboardPage implements OnInit {
 
   protected label(v: unknown): string {
     return labelize(v);
+  }
+
+  protected readonly rainBands = RAIN_BANDS;
+  protected bandColour(code: unknown): string {
+    return RAIN_BANDS.find((b) => b.code === code)?.colour ?? '#9e9e9e';
   }
 
   protected riskTone(v: unknown): Tone {
