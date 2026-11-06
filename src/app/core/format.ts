@@ -5,7 +5,12 @@ export function labelize(value: unknown): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+/** A record field that holds a unit ("unit", "volume_unit") – shown exactly as recorded, never capitalised. */
+export function isUnitField(name: string): boolean {
+  return name === 'unit' || name.endsWith('_unit');
+}
+
+export type Tone ='success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 const TONES: Record<Tone, string[]> = {
   success: ['valid', 'verified', 'approved', 'active', 'issued', 'succeeded', 'published', 'reviewed', 'accepted',

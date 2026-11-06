@@ -14,8 +14,51 @@ import { StatusBadge } from '../../shared/badges';
 import { confirmAction } from '../../shared/confirm-dialog';
 import { Column, DataTable } from '../../shared/data-table';
 import { DetailGrid } from '../../shared/detail-grid';
-import { openForm } from '../../shared/form-dialog';
+import { FieldDef, openForm } from '../../shared/form-dialog';
 import { Notice, PageHeader } from '../../shared/page-header';
+
+/** Prefix of the connector-setting fields in the edit form (kept apart from the source's own fields). */
+const SETTING = 'setting__';
+
+/** Labels, limits and choices for the connector settings a user may change; other settings get a generic field. */
+const SETTING_INFO: Record<string, Partial<FieldDef>> = {
+  past_days: { label: 'Days fetched on each pull', min: 1, max: 31, hint: 'Recent whole days re-read on every pull' },
+  rain_history_days: { label: 'Days of earlier station rain to fill in', min: 0, max: 1100,
+    hint: 'Only days not imported yet are added; days the station did not report stay missing (never 0 mm)' },
+  series: { label: 'Sensor data series (pH, EC, N/P/K)', type: 'select', options: [
+    { value: 'app', label: 'As shown in the FarmFuture app (default)' }, { value: 'raw', label: 'Raw sensor values' },
+    { value: 'calibrated', label: 'Calibrated' }, { value: 'lab_anchored', label: 'Lab-anchored' }],
+    hint: 'The series used for reporting is a pending programme decision (FARMFUTURE_SENSOR_UNITS); each reading records its series' },
+  horizon_days: { label: 'Forecast horizon (days)', min: 1, max: 14 },
+  history_days: { label: 'Earlier advisory runs to read', min: 0, max: 60 },
+  station_observations: { label: 'Import weather-station days' },
+  forecast: { label: 'Import the 5-day forecast' },
+  include_lab_reports: { label: 'Import soil lab reports' },
+  include_reports_without_lab_name: { label: 'Also import reports that name no laboratory' },
+  record_app_delivery: { label: 'Record app display as "sent" (never delivered/read)' },
+  max_farms: { label: 'Most farms per pull', min: 1, max: 1000 },
+  timeout_seconds: { label: 'Request timeout (seconds)', min: 5, max: 120 },
+  units: { label: 'Units FarmFuture does not state (JSON)' },
+  device_types: { label: 'FarmFuture device type → platform device type (JSON)' },
+  skip_kinds: { label: 'Advisory kinds to skip (JSON list)' },
+};
+
+/** Typed form fields for a pull connector's settings: its catalogue defaults plus any setting already saved. */
+export function settingFields(defaults: Record<string, unknown>, current: Record<string, unknown>,
+                              adapter: string): FieldDef[] {
+  const keys = [...new Set([...Object.keys(defaults), ...Object.keys(current)])].filter((k) => k !== 'programme_code');
+  return keys.map((key) => {
+    const sample = current[key] ?? defaults[key];
+    const info = SETTING_INFO[key] ?? {};
+    const type: FieldDef['type'] = info.type ?? (typeof sample === 'boolean' ? 'boolean'
+      : typeof sample === 'number' ? (Number.isInteger(sample) ? 'integer' : 'number')
+        : sample !== null && typeof sample === 'object' ? 'json' : 'text');
+    return { name: SETTING + key, label: info.label ?? key.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()),
+      type, options: info.options, min: info.min, max: info.max, default: defaults[key],
+      hint: info.hint ?? `Connector setting "${key}"`,
+      showIf: (v: Record<string, any>) => v['adapter_code'] === adapter } as FieldDef;
+  });
+}
 
 @Component({
   selector: 'app-integrations',
@@ -238,8 +281,13 @@ export class SourceDetailPage implements OnInit {
 
   protected async edit(s: Row): Promise<void> {
     const catalogue = await firstValueFrom(this.api.get<Row[]>('/integrations/catalogue'));
+    const entry = catalogue.find((c) => c['adapter_code'] === s['adapter_code']);
+    const config: Record<string, unknown> = s['config'] ?? {};
+    const settings = settingFields(entry?.['config'] ?? {}, config, s['adapter_code']);
     const saved = await openForm(this.dialog, {
-      title: `Edit ${s['source_code']}`, value: { ...s, programme_code: s['config']?.['programme_code'] ?? '' },
+      title: `Edit ${s['source_code']}`,
+      value: { ...s, programme_code: config['programme_code'] ?? '',
+        ...Object.fromEntries(settings.map((f) => [f.name, config[f.name.slice(SETTING.length)] ?? f.default])) },
       fields: [
         { name: 'name', label: 'Name', type: 'text', required: true },
         { name: 'programme_code', label: 'Programme code (pull adapters)', type: 'text',
@@ -255,12 +303,17 @@ export class SourceDetailPage implements OnInit {
         { name: 'base_url_env_var', label: 'Base URL environment variable', type: 'text', hint: 'Secrets/URLs live in environment config' },
         { name: 'owner', label: 'Owner', type: 'text' },
         { name: 'availability_note', label: 'Availability / contract status', type: 'textarea' },
+        ...settings,
       ],
       submit: (v) => {
-        const { programme_code, ...body } = v;
+        const { programme_code, ...rest } = v;
+        const body = Object.fromEntries(Object.entries(rest).filter(([k]) => !k.startsWith(SETTING)));
+        const changed = Object.fromEntries(settings.filter((f) => rest[f.name] !== null && rest[f.name] !== undefined)
+          .map((f) => [f.name.slice(SETTING.length), rest[f.name]]));
         const pull = catalogue.some((c) => c['adapter_code'] === body['adapter_code']);
-        const config = pull ? { ...(s['config'] ?? {}), programme_code: programme_code || null } : undefined;
-        return firstValueFrom(this.api.patch(`/integrations/sources/${s['source_code']}`, config ? { ...body, config } : body));
+        const sameAdapter = body['adapter_code'] === s['adapter_code'];
+        const next = pull ? { ...config, ...(sameAdapter ? changed : {}), programme_code: programme_code || null } : undefined;
+        return firstValueFrom(this.api.patch(`/integrations/sources/${s['source_code']}`, next ? { ...body, config: next } : body));
       },
     });
     if (saved) this.ngOnInit();

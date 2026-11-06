@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { labelize } from '../../core/format';
+import { isUnitField, labelize } from '../../core/format';
 import { LookupsService } from '../../core/lookups.service';
 import { RecordType, Row } from '../../core/models';
 import { NotifyService } from '../../core/notify.service';
@@ -107,7 +107,8 @@ export class RecordDetailPage implements OnInit {
     const known = rt?.fields ?? [];
     const items: DetailItem[] = known.map((f) => ({
       label: f.label + (f.unit ? ` (${f.unit})` : ''), value: attrs[f.name],
-      kind: f.type === 'boolean' ? 'bool' : f.type === 'select' ? 'label' : 'text',
+      // units are shown exactly as recorded (a capitalised "µS/cm" would turn µ into the Greek capital Μ)
+      kind: f.type === 'boolean' ? 'bool' : f.type === 'select' && !isUnitField(f.name) ? 'label' : 'text',
     }));
     for (const [k, v] of Object.entries(attrs)) {
       if (!known.some((f) => f.name === k)) items.push({ label: labelize(k) + ' (derived)', value: v });
