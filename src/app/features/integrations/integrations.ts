@@ -59,8 +59,8 @@ export class IntegrationsPage implements OnInit {
         { name: 'adapter_code', label: 'Adapter', type: 'select', required: true,
           options: ['push_only', 'unconfigured_rest', 'mock_water_meter', 'mock_iot_gateway',
             ...catalogue.map((c) => c['adapter_code'] as string)] },
-        { name: 'programme_code', label: 'Programme code (pull adapters)', type: 'text',
-          hint: 'Programme the pulled records belong to, e.g. the code on the Programmes page' },
+        { name: 'programme_code', label: 'Programme code (required for pull adapters)', type: 'text',
+          hint: 'Programme the pulled records belong to, e.g. TEST-FF – the code on the Programmes page' },
         { name: 'is_mock', label: 'Mock / demo source', type: 'boolean', hint: 'Set automatically for catalogue adapters' },
         { name: 'auth_type', label: 'Authentication', type: 'select', options: ['api_key', 'oauth2', 'basic', 'none'] },
         { name: 'base_url_env_var', label: 'Base URL environment variable', type: 'text', hint: 'Secrets/URLs live in environment config' },
@@ -91,6 +91,9 @@ export class IntegrationsPage implements OnInit {
         @if (auth.has('integration.manage')) {
           @if (s['adapter_code'] === 'farmfuture_water_engine' && auth.has('farmer.manage')) {
             <button mat-stroked-button (click)="importFarms()"><mat-icon>download</mat-icon> Import farms from FarmFuture</button>
+          }
+          @if (s['adapter_code'] === 'farmfuture_soil_microclimate' && auth.has('module.write')) {
+            <button mat-stroked-button (click)="importDevices()"><mat-icon>sensors</mat-icon> Import devices from FarmFuture</button>
           }
           @if (s['source_type'] === 'rest_pull') {<button mat-flat-button (click)="pull()"><mat-icon>sync</mat-icon> Run pull</button>}
           <button mat-stroked-button (click)="testPayload()"><mat-icon>science</mat-icon> Test payload</button>
@@ -203,6 +206,22 @@ export class SourceDetailPage implements OnInit {
     this.ngOnInit();
   }
 
+  protected async importDevices(): Promise<void> {
+    const ok = await confirmAction(this.dialog, {
+      title: 'Import devices from FarmFuture',
+      message: 'Reads the devices installed on the FarmFuture farms already linked to platform plots (read-only) and ' +
+        'registers each SoilSync and MicroClime device on its plot, linked by an identity map. Hubs, air-quality and ' +
+        'analogue weather devices have no platform device type and are skipped.',
+      confirmLabel: 'Import' });
+    if (!ok) return;
+    this.api.post<Row>(`/integrations/sources/${this.code()}/import-devices`).subscribe((out) => {
+      const skipped = out['skipped']?.length ? `; ${out['skipped'].length} skipped (${out['skipped'].join('; ')})` : '';
+      this.notify.success(`Registered ${out['devices_created']} devices from ${out['farms']} farms ` +
+        `(${out['already_imported']} already imported${skipped})`);
+      this.ngOnInit();
+    });
+  }
+
   protected async testPayload(): Promise<void> {
     const out = await openForm<Row>(this.dialog, {
       title: 'Test sample payload (dry run – nothing is saved)',
@@ -220,9 +239,11 @@ export class SourceDetailPage implements OnInit {
   protected async edit(s: Row): Promise<void> {
     const catalogue = await firstValueFrom(this.api.get<Row[]>('/integrations/catalogue'));
     const saved = await openForm(this.dialog, {
-      title: `Edit ${s['source_code']}`, value: s,
+      title: `Edit ${s['source_code']}`, value: { ...s, programme_code: s['config']?.['programme_code'] ?? '' },
       fields: [
         { name: 'name', label: 'Name', type: 'text', required: true },
+        { name: 'programme_code', label: 'Programme code (pull adapters)', type: 'text',
+          hint: 'Programme the pulled records belong to, e.g. TEST-FF – the code on the Programmes page' },
         { name: 'module_code', label: 'Workstream', type: 'lookup', lookup: 'module' },
         { name: 'source_type', label: 'Type', type: 'select', required: true, options: ['rest_push', 'rest_pull', 'file_exchange'],
           hint: 'Catalogue adapters fetch data themselves – use rest_pull' },
@@ -235,7 +256,12 @@ export class SourceDetailPage implements OnInit {
         { name: 'owner', label: 'Owner', type: 'text' },
         { name: 'availability_note', label: 'Availability / contract status', type: 'textarea' },
       ],
-      submit: (v) => firstValueFrom(this.api.patch(`/integrations/sources/${s['source_code']}`, v)),
+      submit: (v) => {
+        const { programme_code, ...body } = v;
+        const pull = catalogue.some((c) => c['adapter_code'] === body['adapter_code']);
+        const config = pull ? { ...(s['config'] ?? {}), programme_code: programme_code || null } : undefined;
+        return firstValueFrom(this.api.patch(`/integrations/sources/${s['source_code']}`, config ? { ...body, config } : body));
+      },
     });
     if (saved) this.ngOnInit();
   }
