@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, OnInit, inject, input, signal, computed } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,6 +23,8 @@ const SETTING = 'setting__';
 
 /** Labels, limits and choices for the connector settings a user may change; other settings get a generic field. */
 const SETTING_INFO: Record<string, Partial<FieldDef>> = {
+  schedule_daily_at: { label: 'Pull automatically every day at (HH:MM, India time)',
+    hint: 'Leave empty for manual pulls only. Runs when the scheduler runs (see Integrations → Data sources)' },
   past_days: { label: 'Days fetched on each pull', min: 1, max: 31, hint: 'Recent whole days re-read on every pull' },
   rain_history_days: { label: 'Days of earlier station rain to fill in', min: 0, max: 1100,
     hint: 'Only days not imported yet are added; days the station did not report stay missing (never 0 mm)' },
@@ -68,14 +71,24 @@ export function settingFields(defaults: Record<string, unknown>, current: Record
 
 @Component({
   selector: 'app-integrations',
-  imports: [PageHeader, Notice, DataTable, MatButtonModule, MatIconModule],
+  imports: [PageHeader, Notice, DataTable, MatButtonModule, MatIconModule, DatePipe],
   template: `
     <app-page-header title="Integration operations" subtitle="FarmFuture engines, IoT gateways, weather and external sources">
       @if (auth.has('integration.manage')) {<button mat-flat-button (click)="create()"><mat-icon>add</mat-icon> Register source</button>}
     </app-page-header>
+    @if (token(); as t) {
+      @if (t['configured'] && t['days_left'] !== null && t['days_left'] < 7) {
+        <app-notice kind="warning"><strong>FarmFuture access token {{ t['days_left'] <= 0 ? 'has expired' : 'expires in ' + days(t['days_left']) }}</strong>
+          ({{ t['expires_at'] | date: 'd MMM y, HH:mm' }}). Every FarmFuture pull fails after that – ask FarmFuture for a new
+          (production) token and replace FARMFUTURE_API_TOKEN in the server's .env.</app-notice>
+      }
+    }
     <app-notice kind="warning">Live integrations are configured only after the source owner confirms availability, the API/data
       contract and access. Sources marked MOCK generate synthetic data; "not configured" sources never fabricate data.</app-notice>
-    <app-table [columns]="columns" [rows]="sources()" (rowClick)="router.navigate(['/integrations', $event['source_code']])" />`,
+    <app-table [columns]="columns" [rows]="rows()" (rowClick)="router.navigate(['/integrations', $event['source_code']])" />
+    <p class="muted small">Automatic pulls: a source with a daily time runs when the scheduler runs –
+      <code>python -m app.services.integration.scheduler</code> every 15 minutes (Windows Task Scheduler / cron), or
+      SCHEDULER_ENABLED=true on a single-process server. Each run appears in the source's sync runs as "schedule".</p>`,
 })
 export class IntegrationsPage implements OnInit {
   protected readonly auth = inject(AuthService);
@@ -83,15 +96,31 @@ export class IntegrationsPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly dialog = inject(MatDialog);
   protected readonly sources = signal<Row[]>([]);
+  protected readonly health = signal<Row | null>(null);
+  protected readonly token = computed(() => this.health()?.['farmfuture_token'] ?? null);
+  /** Sources with their schedule and freshness state from /integrations/health. */
+  protected readonly rows = computed(() => {
+    const state = new Map<string, Row>((this.health()?.['sources'] ?? []).map((h: Row) => [h['source_code'], h]));
+    return this.sources().map((s) => ({ ...s, schedule: state.get(s['source_code'])?.['schedule_daily_at'] ?? null,
+      freshness: state.get(s['source_code'])?.['state'] ?? null }));
+  });
   protected readonly columns: Column[] = [
     { key: 'name', label: 'Source' }, { key: 'source_code', label: 'Code' }, { key: 'module_code', label: 'Workstream', kind: 'label' },
     { key: 'source_type', label: 'Type', kind: 'label' }, { key: 'connection_status', label: 'Connection' },
     { key: 'is_mock', label: 'Mock', kind: 'bool' }, { key: 'last_sync_at', label: 'Last sync', kind: 'datetime' },
-    { key: 'last_sync_status', label: 'Last result', kind: 'status' }, { key: 'open_quarantine', label: 'Quarantined', kind: 'number' },
+    { key: 'last_sync_status', label: 'Last result', kind: 'status' },
+    { key: 'schedule', label: 'Daily at', value: (r) => r['schedule'] ?? (r['source_type'] === 'rest_pull' ? 'manual' : '—') },
+    { key: 'freshness', label: 'Freshness', kind: 'status' },
+    { key: 'open_quarantine', label: 'Quarantined', kind: 'number' },
   ];
 
   ngOnInit(): void {
     this.api.get<Row[]>('/integrations/sources').subscribe((s) => this.sources.set(s));
+    this.api.get<Row>('/integrations/health').subscribe((h) => this.health.set(h));
+  }
+
+  protected days(value: number): string {
+    return value < 1 ? `${Math.round(value * 24)} hours` : `${Math.floor(value)} days`;
   }
 
   protected async create(): Promise<void> {

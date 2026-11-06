@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { isUnitField, labelize } from '../../core/format';
+import { isUnitField, labelize, observedLabel } from '../../core/format';
 import { LookupsService } from '../../core/lookups.service';
 import { RecordType, Row } from '../../core/models';
 import { NotifyService } from '../../core/notify.service';
@@ -91,7 +91,7 @@ export class RecordDetailPage implements OnInit {
     return [
       { label: 'Farmer', value: r['farmer']?.label }, { label: 'Plot', value: r['farm_plot']?.label },
       { label: 'FPO / group', value: r['organisation']?.label }, { label: 'Device', value: r['device']?.label },
-      { label: 'Activity', value: r['activity_code'] }, { label: 'Observed at', value: r['observed_at'], kind: 'datetime' },
+      { label: 'Activity', value: r['activity_code'] }, { label: 'Observed at', value: observedLabel(r['observed_at']) },
       { label: 'Value', value: r['value'] != null ? `${Number(r['value'])} ${r['unit'] ?? ''}` : null },
       { label: 'Source', value: r['source_system_id'] ? `Imported (${r['source_record_id']})` : 'Manual entry' },
       { label: 'Source timestamp', value: r['source_timestamp'], kind: 'datetime' },

@@ -11,7 +11,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { labelize } from '../../core/format';
+import { labelize, observedLabel } from '../../core/format';
 import { LookupsService } from '../../core/lookups.service';
 import { Page, RecordType, Row, Workstream } from '../../core/models';
 import { NatureBadge } from '../../shared/badges';
@@ -95,7 +95,7 @@ export class ModulePage {
   protected readonly validation = new FormControl<string | null>(null);
   protected readonly columns: Column[] = [
     { key: 'record_type', label: 'Type', kind: 'label' }, { key: 'data_nature', label: 'Nature', kind: 'nature' },
-    { key: 'observed_at', label: 'Observed', kind: 'datetime' },
+    { key: 'observed_at', label: 'Observed', value: (r) => observedLabel(r['observed_at']) },
     { key: 'where', label: 'Farmer / plot / area', value: (r) => r['farm_plot']?.label ?? r['farmer']?.label ?? r['device']?.label ?? r['geo_unit']?.label },
     { key: 'value', label: 'Value', value: (r) => (r['value'] != null ? `${Number(r['value'])} ${r['unit'] ?? ''}` : '—') },
     { key: 'submission_status', label: 'Submission', kind: 'status' }, { key: 'validation_status', label: 'Validation', kind: 'status' },

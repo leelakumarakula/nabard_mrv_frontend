@@ -32,7 +32,7 @@ const NATURE: Record<string, { label: string; icon: string; tone: string }> = {
   observed: { label: 'Observed', icon: 'visibility', tone: 'success' },
   user_reported: { label: 'Reported', icon: 'record_voice_over', tone: 'info' },
   model_prediction: { label: 'Prediction – not confirmed', icon: 'insights', tone: 'prediction' },
-  calculated: { label: 'Calculated (engine)', icon: 'functions', tone: 'info' },
+  calculated: { label: 'Calculated', icon: 'functions', tone: 'info' },
   assessment: { label: 'Assessment', icon: 'fact_check', tone: 'info' },
 };
 

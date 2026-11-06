@@ -5,22 +5,37 @@ export function labelize(value: unknown): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/**
+ * When a record happened: daily values (daily statistics, station days, forecasts, monthly statuses) are stamped at noon
+ * India time by convention, so they are shown as a date only; real readings keep their time.
+ */
+export function observedLabel(value: unknown): string {
+  if (!value) return '—';
+  const at = new Date(String(value));
+  if (Number.isNaN(at.getTime())) return String(value);
+  const ist = new Date(at.getTime() + 330 * 60_000);
+  const noon = ist.getUTCHours() === 12 && ist.getUTCMinutes() === 0 && ist.getUTCSeconds() === 0;
+  const opts: Intl.DateTimeFormatOptions = noon ? { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }
+    : { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' };
+  return at.toLocaleString('en-IN', opts);
+}
+
 /** A record field that holds a unit ("unit", "volume_unit") – shown exactly as recorded, never capitalised. */
 export function isUnitField(name: string): boolean {
   return name === 'unit' || name.endsWith('_unit');
 }
 
-export type Tone ='success' | 'warning' | 'danger' | 'info' | 'neutral';
+export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 const TONES: Record<Tone, string[]> = {
   success: ['valid', 'verified', 'approved', 'active', 'issued', 'succeeded', 'published', 'reviewed', 'accepted',
-    'observed', 'enrolled', 'given', 'calculated', 'pass', 'resolved', 'replayed', 'open_period', 'receiving'],
+    'observed', 'enrolled', 'given', 'calculated', 'pass', 'resolved', 'replayed', 'open_period', 'receiving', 'ok'],
   warning: ['pending_validation', 'pending_review', 'pending', 'draft', 'submitted', 'proposed', 'exception', 'partial',
     'correction_requested', 'in_progress', 'open', 'generated', 'planned', 'reported', 'running', 'revised',
-    'unverified', 'conditional', 'major', 'adjusted', 'not_recorded', 'recommended'],
+    'unverified', 'conditional', 'major', 'adjusted', 'not_recorded', 'recommended', 'stale', 'never_run'],
   danger: ['rejected', 'not_verified', 'failed', 'faulty', 'withdrawn', 'calculation_error', 'critical', 'not_adopted',
     'fail', 'inactive', 'locked', 'retired', 'discarded'],
-  info: ['imported', 'not_submitted', 'minor', 'closed', 'removed', 'completed'],
+  info: ['imported', 'not_submitted', 'minor', 'closed', 'removed', 'completed', 'manual'],
   neutral: [],
 };
 

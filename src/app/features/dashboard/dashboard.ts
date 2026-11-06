@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -34,7 +34,7 @@ interface Segment { key: string; count: number; share: number; fill: string; ink
 
 @Component({
   selector: 'app-dashboard',
-  imports: [StatusBadge, DemoBadge, MapView, RouterLink, DatePipe, MatIconModule, MatButtonModule],
+  imports: [StatusBadge, DemoBadge, MapView, RouterLink, DatePipe, DecimalPipe, MatIconModule, MatButtonModule],
   template: `
     <section class="dash-hero">
       <div class="hero-main">
@@ -170,6 +170,31 @@ interface Segment { key: string; count: number; share: number; fill: string; ink
                 </a>
               }
             }
+          </section>
+        }
+
+        @if (sourcesHealth(); as h) {
+          <section class="dash-card span-12">
+            <div class="panel-head"><h3><mat-icon>hub</mat-icon>Data sources</h3><a routerLink="/integrations" class="small">Integrations →</a></div>
+            <div class="source-states">
+              @for (s of sourceStates; track s.key) {
+                <span class="source-state" [class]="'tone-' + s.tone"><strong>{{ h.summary[s.key] ?? 0 }}</strong> {{ s.label }}</span>
+              }
+              @if (h.farmfuture_token?.days_left !== null && h.farmfuture_token?.days_left !== undefined) {
+                <span class="source-state" [class]="h.farmfuture_token.days_left < 7 ? 'tone-danger' : 'tone-neutral'">
+                  FarmFuture token: {{ h.farmfuture_token.days_left <= 0 ? 'expired' : (h.farmfuture_token.days_left | number: '1.0-0') + ' days left' }}</span>
+              }
+            </div>
+            @for (s of attention(); track s.source_code) {
+              <a class="feed-row" [routerLink]="['/integrations', s.source_code]">
+                <span class="feed-icon" [class]="'tone-' + (s.state === 'failed' ? 'danger' : 'warning')"><mat-icon>sync_problem</mat-icon></span>
+                <span class="grow">{{ s.name }}<br /><span class="muted small">
+                  @if (s.state === 'failed') {Last pull failed {{ s.last_run_at | date: 'd MMM, HH:mm' }}: {{ s.last_error }}}
+                  @else if (s.state === 'stale') {No successful pull for {{ s.hours_since_success | number: '1.0-0' }} hours (daily at {{ s.schedule_daily_at }})}
+                  @else {Never pulled}</span></span>
+                <app-status [status]="s.state" />
+              </a>
+            } @empty {<div class="empty-note"><mat-icon>task_alt</mat-icon>All pull sources are up to date</div>}
           </section>
         }
 
@@ -332,6 +357,7 @@ export class DashboardPage implements OnInit {
 
   ngOnInit(): void {
     this.api.get<Row>('/dashboard').subscribe((d) => this.data.set(d));
+    if (this.auth.has('integration.read')) this.api.get<Row>('/integrations/health').subscribe((h) => this.sourcesHealth.set(h));
     if (this.auth.has('farmer.read')) this.loadBreakdown('state');
     if (this.canMap) {
       this.api.get<Row>('/map/plots').subscribe((m) => { this.mapPlots.set(m['plots'] ?? []); this.mapLoaded.set(true); });
@@ -351,6 +377,14 @@ export class DashboardPage implements OnInit {
   }
 
   protected readonly rainBands = RAIN_BANDS;
+  protected readonly sourcesHealth = signal<Row | null>(null);
+  protected readonly sourceStates = [
+    { key: 'ok', label: 'up to date (daily)', tone: 'success' }, { key: 'manual', label: 'manual', tone: 'info' },
+    { key: 'stale', label: 'stale', tone: 'warning' }, { key: 'failed', label: 'failed', tone: 'danger' },
+    { key: 'never_run', label: 'never run', tone: 'warning' },
+  ];
+  protected readonly attention = computed(() => (this.sourcesHealth()?.['sources'] ?? [])
+    .filter((s: Row) => s['enabled'] && ['failed', 'stale', 'never_run'].includes(s['state'])));
   protected bandColour(code: unknown): string {
     return RAIN_BANDS.find((b) => b.code === code)?.colour ?? '#9e9e9e';
   }

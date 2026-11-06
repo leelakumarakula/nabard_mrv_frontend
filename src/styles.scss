@@ -273,6 +273,9 @@ a.feed-row:hover { background: var(--bg); }
   &.empty { opacity: .55; } }
 .rain-sub { margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
 /* Coffee calendar (practices) */
+/* Data sources (dashboard) */
+.source-states { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.source-state { padding: 6px 12px; border-radius: 999px; background: var(--bg); font-size: .88rem; }
 .calendar-panel { margin-bottom: 16px; }
 .calendar-controls { display: flex; gap: 12px; flex-wrap: wrap; mat-form-field { width: 160px; } }
 
