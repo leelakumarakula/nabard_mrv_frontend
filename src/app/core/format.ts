@@ -20,6 +20,30 @@ export function observedLabel(value: unknown): string {
   return at.toLocaleString('en-IN', opts);
 }
 
+/**
+ * Sensor parameter names as the FarmFuture app shows them (Farm Insights, Sensors and device pages – reviewed 6 Nov 2026),
+ * so a reading reads the same here as in FarmFuture. Soil moisture is measured at two depths: L1 = top, L2 = bottom.
+ */
+const SENSOR_NAMES: Record<string, string> = {
+  soil_moisture: 'Soil Moisture', soil_temperature: 'Soil Temperature', ph: 'pH', ec: 'EC', nitrogen: 'Nitrogen',
+  phosphorus: 'Phosphorus', potassium: 'Potassium', air_temperature: 'Temperature', humidity: 'Humidity',
+  rainfall: 'Rainfall', air_pressure: 'Air Pressure', wind_speed: 'Wind Speed', leaf_wetness: 'Leaf Wetness',
+  light_intensity: 'Lux',
+};
+const MOISTURE_LAYERS: Record<string, string> = { L1: 'Top Moisture', L2: 'Bottom Moisture' };
+
+export function sensorName(parameter: unknown, layer?: unknown): string {
+  const p = String(parameter ?? '');
+  if (p === 'soil_moisture' && layer && MOISTURE_LAYERS[String(layer)]) return MOISTURE_LAYERS[String(layer)];
+  return SENSOR_NAMES[p] ?? labelize(p);
+}
+
+/** How a device is named on screen: FarmFuture devices (coded FF-<MAC ID>) by their MAC ID, others by their code. */
+export function deviceId(code: unknown): string {
+  const c = String(code ?? '');
+  return c.startsWith('FF-') ? c.slice(3) : c;
+}
+
 /** A record field that holds a unit ("unit", "volume_unit") – shown exactly as recorded, never capitalised. */
 export function isUnitField(name: string): boolean {
   return name === 'unit' || name.endsWith('_unit');

@@ -9,11 +9,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
-import { formatNumber, labelize } from '../../core/format';
+import { deviceId, formatNumber, labelize } from '../../core/format';
 import { LookupsService } from '../../core/lookups.service';
 import { Programme, Row } from '../../core/models';
 import { Notice, PageHeader } from '../../shared/page-header';
-import { COLOUR_MODES, ColourMode, markerColour } from './map-colours';
+import { COLOUR_MODES, ColourMode, DEVICE_STATES, LOCATION_NOTES, deviceKind, deviceState, markerColour } from './map-colours';
 import { Basemap, MapView } from './map-view';
 
 const OUTLINE_REASONS: Record<string, string> = {
@@ -61,14 +61,15 @@ const OUTLINE_REASONS: Record<string, string> = {
         <div class="map-kpi"><mat-icon>verified</mat-icon><div><strong>{{ summary().practising }}</strong><span>with practice progress</span></div></div>
         <div class="map-kpi"><mat-icon>pest_control</mat-icon><div><strong>{{ summary().highRisk }}</strong><span>at high pest or climate risk</span></div></div>
         <div class="map-kpi"><mat-icon>satellite_alt</mat-icon><div><strong>{{ summary().ndvi }}</strong><span>with satellite greenness</span></div></div>
-        <div class="map-kpi"><mat-icon>sensors</mat-icon><div><strong>{{ summary().sensors }}</strong><span>with a soil-moisture sensor</span></div></div>
+        <div class="map-kpi"><mat-icon>sensors</mat-icon><div><strong>{{ d['devices']?.['reporting'] ?? 0 }} / {{ d['devices']?.['total'] ?? 0 }}</strong><span>IoT devices reporting</span></div></div>
       </div>
     }
 
     <div class="map-layout">
       <div class="map-stage">
         <app-map-view #mapView [plots]="plots()" [mode]="mode()" [threeD]="threeD()" [basemap]="basemap()" [columns]="columns()"
-          [(autoRotate)]="rotating" [selectedId]="selected()?.['id'] ?? null" [outline]="outline()" (plotClick)="select($event)" />
+          [(autoRotate)]="rotating" [selectedId]="selected()?.['id'] ?? null" [outline]="outline()" (plotClick)="select($event)"
+          [devices]="devices()" [showDevices]="showDevices()" (deviceClick)="selectDevice($event)" />
         <div class="map-float map-actions">
           <button mat-stroked-button type="button" [class.on]="rotating()" (click)="rotating.set(!rotating())"
             [attr.aria-pressed]="rotating()"><mat-icon>{{ rotating() ? 'pause_circle' : '360' }}</mat-icon>
@@ -77,12 +78,21 @@ const OUTLINE_REASONS: Record<string, string> = {
             <button mat-stroked-button type="button" [class.on]="columns()" (click)="columns.set(!columns())"
               [attr.aria-pressed]="columns()"><mat-icon>bar_chart</mat-icon> 3D columns</button>
           }
+          @if (devices().length) {
+            <button mat-stroked-button type="button" [class.on]="showDevices()" (click)="showDevices.set(!showDevices())"
+              [attr.aria-pressed]="showDevices()"><mat-icon>sensors</mat-icon> IoT devices</button>
+          }
           <button mat-stroked-button type="button" (click)="mapView.resetView()"><mat-icon>center_focus_strong</mat-icon> Reset view</button>
         </div>
         <div class="map-float map-legend">
           <div class="legend-title">{{ modeLabel() }}</div>
           @for (l of legend(); track l.key) {<div class="legend-row"><span class="dot" [style.background]="l.colour"></span>{{ l.label }}</div>}
           @if (threeD() && columns()) {<div class="legend-note">Column height follows the same scale</div>}
+          @if (showDevices() && devices().length) {
+            <div class="legend-title legend-devices">IoT devices (zoom in)</div>
+            @for (s of deviceLegend(); track s.key) {<div class="legend-row"><span class="dev-swatch" [style.background]="s.colour"></span>{{ s.label }}</div>}
+            <div class="legend-note">Letter = type: S soil · W weather · A analogue</div>
+          }
         </div>
       </div>
 
@@ -90,7 +100,7 @@ const OUTLINE_REASONS: Record<string, string> = {
         @if (selected(); as p) {
           <div class="plot-head" [style.--plot-colour]="colour(p)">
             <div class="plot-head-top">
-              <span class="plot-dot"></span><h3>{{ p['plot_code'] }}</h3>
+              <span class="plot-dot"></span><h3>{{ p['farm_name'] ?? p['plot_code'] }}@if (p['farm_name']) {<span class="plot-code">{{ p['plot_code'] }}</span>}</h3>
               @if (p['is_demo']) {<span class="badge tone-demo">DEMO</span>}
               <span class="spacer"></span>
               <button mat-icon-button type="button" (click)="mapView.flyTo(p)" aria-label="Zoom to plot"><mat-icon>my_location</mat-icon></button>
@@ -123,6 +133,31 @@ const OUTLINE_REASONS: Record<string, string> = {
               @default {<div class="muted">{{ outlineReason() }}</div>}
             }
           </section>
+          @if (p['devices']?.length) {
+            <section class="info-card"><h5><mat-icon>sensors</mat-icon>IoT devices on this farm ({{ p['devices'].length }})</h5>
+              @if (!data()?.['precise_locations']) {<div class="muted small">Exact device positions are hidden for your role.</div>}
+              @for (dv of p['devices']; track dv['id']) {
+                <div class="device-row" [class.focus]="focusDevice() === dv['id']">
+                  <span class="dev-badge" [style.background]="state(dv).colour">{{ kind(dv).letter }}</span>
+                  <div class="grow">
+                    <div class="device-line">
+                      <a [routerLink]="['/devices', dv['id']]">{{ kind(dv).label }}</a>
+                      <span class="dev-state" [style.color]="state(dv).colour">{{ state(dv).label }}</span>
+                    </div>
+                    <div class="muted small">{{ deviceId(dv['device_code']) }}
+                      · last reading {{ dv['last_reading_at'] ? (dv['last_reading_at'] | date: 'd MMM') : 'none' }}
+                      @if (dv['expected_days_30']) { · {{ dv['reporting_days_30'] }}/{{ dv['expected_days_30'] }} days}
+                      @if (dv['battery_pct'] != null) { · battery {{ num(dv['battery_pct'], 0) }} %}</div>
+                    @if (locationNote(dv); as note) {<div class="device-warn small"><mat-icon>{{ dv['location_check'] === 'far_from_plot' ? 'wrong_location' : 'info' }}</mat-icon>
+                      <span>{{ note }}@if (dv['distance_from_plot_km'] != null) { ({{ num(dv['distance_from_plot_km'], 0) }} km away)}</span></div>}
+                  </div>
+                  @if (dv['latitude'] != null) {
+                    <button mat-icon-button type="button" (click)="flyToDevice(dv)" aria-label="Zoom to device"><mat-icon>my_location</mat-icon></button>
+                  }
+                </div>
+              }
+            </section>
+          }
           <section class="info-card"><h5><mat-icon>task_alt</mat-icon>Practice progress</h5>
             <div>{{ label(p['practice_stage']) }} @for (c of counts(p); track c[0]) {<span class="muted"> · {{ label(c[0]) }} {{ c[1] }}</span>}</div>
           </section>
@@ -197,6 +232,7 @@ const OUTLINE_REASONS: Record<string, string> = {
               <li><mat-icon>360</mat-icon><span><strong>Rotate</strong> orbits the camera – touch the map to stop</span></li>
               <li><mat-icon>bar_chart</mat-icon><span><strong>3D columns</strong> raise each plot by the colour scale</span></li>
               <li><mat-icon>crop_free</mat-icon><span>Clicking a FarmFuture plot draws its <strong>real farm boundary</strong></span></li>
+              <li><mat-icon>sensors</mat-icon><span><strong>Zoom in</strong> to see the farm's IoT devices as squares, coloured by whether they are reporting</span></li>
             </ul>
           </div>
         }
@@ -228,6 +264,19 @@ const OUTLINE_REASONS: Record<string, string> = {
     .legend-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; padding: 1px 0; }
     .legend-note { margin-top: 6px; font-size: 0.74rem; color: var(--muted); }
     .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; box-shadow: 0 0 0 2px #fff; }
+    .dev-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; box-shadow: 0 0 0 2px #fff; }
+    .legend-devices { margin-top: 10px; }
+    .device-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 6px; border-radius: 10px; }
+    .device-row + .device-row { border-top: 1px solid var(--border); }
+    .device-row.focus { background: var(--mint); }
+    .device-row .grow { flex: 1; min-width: 0; }
+    .device-row button { margin: -6px -6px 0 0; }
+    .dev-badge { flex: none; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: #fff;
+      font-weight: 600; font-size: 0.85rem; margin-top: 2px; box-shadow: 0 0 0 2px #fff, 0 1px 4px rgba(0, 0, 0, 0.25); }
+    .device-line { display: flex; gap: 8px; justify-content: space-between; align-items: baseline; flex-wrap: wrap; }
+    .dev-state { font-size: 0.78rem; font-weight: 600; }
+    .device-warn { display: flex; gap: 4px; align-items: flex-start; margin-top: 4px; color: #8a5300; }
+    .device-warn mat-icon { font-size: 16px; width: 16px; height: 16px; flex: none; margin-top: 1px; }
     .map-side { max-height: clamp(520px, calc(100vh - 300px), 820px); overflow: auto; display: flex; flex-direction: column; gap: 10px; }
     .side-empty { background: var(--surface); border: 1px dashed var(--border); border-radius: 14px; padding: 22px 18px; text-align: center; }
     .side-empty > mat-icon { width: 52px; height: 52px; font-size: 30px; display: grid; place-items: center; margin: 0 auto 8px;
@@ -244,6 +293,7 @@ const OUTLINE_REASONS: Record<string, string> = {
     }`,
 })
 export class PlotMapPage implements OnInit {
+  protected readonly deviceId = deviceId;
   private readonly api = inject(ApiService);
   private readonly lookups = inject(LookupsService);
   protected readonly view = viewChild.required(MapView);
@@ -254,6 +304,10 @@ export class PlotMapPage implements OnInit {
   protected readonly mode = signal<ColourMode>('practice');
   /** Optional ?colour= query parameter (e.g. the dashboard's rainfall card opens the rainfall layer). */
   readonly colourParam = input<string | undefined>(undefined, { alias: 'colour' });
+  /** Optional ?device= query parameter (the device page's "Show on farm map"). */
+  readonly deviceParam = input<string | undefined>(undefined, { alias: 'device' });
+  protected readonly showDevices = signal(true);
+  protected readonly focusDevice = signal<string | null>(null);
   protected readonly threeD = signal(false);
   protected readonly basemap = signal<Basemap>('streets');
   protected readonly columns = signal(true);
@@ -266,6 +320,15 @@ export class PlotMapPage implements OnInit {
   private readonly reasonCode = signal('no_boundary');
   protected readonly outlineReason = computed(() => OUTLINE_REASONS[this.reasonCode()] ?? OUTLINE_REASONS['no_boundary']);
   protected readonly plots = computed<Row[]>(() => this.data()?.['plots'] ?? []);
+  /** Devices with a drawable position (exact positions come only to roles that may see them). */
+  protected readonly devices = computed<Row[]>(() => this.plots().flatMap((p) => (p['devices'] ?? []) as Row[])
+    .filter((d) => d['latitude'] != null && d['longitude'] != null));
+  protected readonly deviceLegend = computed(() => {
+    const present = new Set(this.devices().map((d) => d['reporting_state']));
+    return DEVICE_STATES.filter((s) => present.has(s.key));
+  });
+  protected readonly kind = (d: Row) => deviceKind(d['device_type']);
+  protected readonly state = (d: Row) => deviceState(d['reporting_state']);
   protected readonly legend = computed(() => COLOUR_MODES.find((m) => m.value === this.mode())!.legend);
   protected readonly modeLabel = computed(() => COLOUR_MODES.find((m) => m.value === this.mode())!.label);
   protected readonly summary = computed(() => {
@@ -275,7 +338,6 @@ export class PlotMapPage implements OnInit {
       practising: plots.filter((p) => p['practice_stage'] && p['practice_stage'] !== 'none').length,
       highRisk: plots.filter((p) => high(p['pest_risk']) || high(p['climate_risk'])).length,
       ndvi: plots.filter((p) => p['ndvi']).length,
-      sensors: plots.filter((p) => p['soil_moisture']).length,
     };
   });
   protected readonly label = labelize;
@@ -290,7 +352,30 @@ export class PlotMapPage implements OnInit {
   protected load(): void {
     const id = this.programmeId() === 'all' ? null : this.programmeId();
     this.clearSelection();
-    this.api.get<Row>('/map/plots', id ? { programme_id: id } : {}).subscribe((d) => this.data.set(d));
+    this.api.get<Row>('/map/plots', id ? { programme_id: id } : {}).subscribe((d) => {
+      this.data.set(d);
+      const wanted = this.deviceParam();
+      const plot = wanted ? this.plots().find((p) => (p['devices'] ?? []).some((dv: Row) => dv['id'] === wanted)) : undefined;
+      if (plot) this.selectDevice(plot['devices'].find((dv: Row) => dv['id'] === wanted), plot);
+    });
+  }
+
+  protected selectDevice(device: Row, plot?: Row): void {
+    const owner = plot ?? this.plots().find((p) => (p['devices'] ?? []).some((dv: Row) => dv['id'] === device['id']));
+    if (!owner) return;
+    if (this.selected()?.['id'] !== owner['id']) this.select(owner);
+    this.focusDevice.set(device['id']);
+    this.showDevices.set(true);
+    if (device['latitude'] != null) setTimeout(() => this.flyToDevice(device), 400);
+  }
+
+  protected flyToDevice(device: Row): void {
+    this.focusDevice.set(device['id']);
+    this.view().flyToPoint(device['longitude'], device['latitude']);
+  }
+
+  protected locationNote(device: Row): string | null {
+    return LOCATION_NOTES[device['location_check']] ?? null;
   }
 
   protected select(plot: Row): void {
@@ -315,6 +400,7 @@ export class PlotMapPage implements OnInit {
 
   protected clearSelection(): void {
     this.selected.set(null);
+    this.focusDevice.set(null);
     this.outline.set(null);
   }
 

@@ -330,6 +330,7 @@ td.cell-bar { position: relative; min-width: 140px; }
   padding: 12px 14px; border-top: 4px solid var(--plot-colour); }
 .plot-head-top { display: flex; align-items: center; gap: 8px; }
 .plot-head h3 { margin: 0; }
+.plot-head h3 .plot-code { display: block; font-size: 0.75rem; font-weight: 500; color: var(--muted); letter-spacing: .02em; }
 .plot-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--plot-colour); box-shadow: 0 0 0 3px #fff, 0 0 0 4px var(--border); }
 .plot-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .plot-facts span { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px;

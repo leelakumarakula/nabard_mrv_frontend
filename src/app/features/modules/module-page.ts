@@ -11,7 +11,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { labelize, observedLabel } from '../../core/format';
+import { labelize, observedLabel, sensorName } from '../../core/format';
 import { LookupsService } from '../../core/lookups.service';
 import { Page, RecordType, Row, Workstream } from '../../core/models';
 import { NatureBadge } from '../../shared/badges';
@@ -69,7 +69,7 @@ const LINKS: Record<string, { label: string; link: string; icon: string }[]> = {
           <mat-select [formControl]="validation"><mat-option [value]="null">All</mat-option>
             @for (s of statuses; track s) {<mat-option [value]="s">{{ label(s) }}</mat-option>}</mat-select></mat-form-field>
       </div>
-      <app-table [columns]="columns" [rows]="list.rows()" [total]="list.total()" [pageIndex]="list.pageIndex()"
+      <app-table [columns]="columns()"[rows]="list.rows()" [total]="list.total()" [pageIndex]="list.pageIndex()"
                  [pageSize]="list.pageSize()" [loading]="list.loading()" (page)="list.onPage($event)"
                  (rowClick)="router.navigate(['/records', $event['id']])" />
     } @else if (notFound()) {
@@ -93,14 +93,23 @@ export class ModulePage {
   protected readonly statuses = ['pending_validation', 'valid', 'exception', 'rejected'];
   protected readonly type = new FormControl<string | null>(null);
   protected readonly validation = new FormControl<string | null>(null);
-  protected readonly columns: Column[] = [
+  private readonly allColumns: Column[] = [
     { key: 'record_type', label: 'Type', kind: 'label' }, { key: 'data_nature', label: 'Nature', kind: 'nature' },
     { key: 'observed_at', label: 'Observed', value: (r) => observedLabel(r['observed_at']) },
-    { key: 'where', label: 'Farmer / plot / area', value: (r) => r['farm_plot']?.label ?? r['farmer']?.label ?? r['device']?.label ?? r['geo_unit']?.label },
-    { key: 'value', label: 'Value', value: (r) => (r['value'] != null ? `${Number(r['value'])} ${r['unit'] ?? ''}` : '—') },
+    { key: 'where', label: 'Farm / farmer / area', value: (r) => r['farm_plot']?.label ?? r['farmer']?.label ?? r['geo_unit']?.label },
+    { key: 'device', label: 'Device MAC ID', value: (r) => r['device']?.label ?? '—' },
+    { key: 'value', label: 'Value', value: (r) => {
+      if (r['value'] == null) return '—';
+      const unit = r['unit'] && r['unit'] !== 'raw' ? ` ${r['unit']}` : '';
+      const name = r['record_type'] === 'sensor_observation'
+        ? `${sensorName(r['attributes']?.['parameter'], r['attributes']?.['layer'])}: ` : '';
+      return `${name}${Number(r['value'])}${unit}`;
+    } },
     { key: 'submission_status', label: 'Submission', kind: 'status' }, { key: 'validation_status', label: 'Validation', kind: 'status' },
     { key: 'source', label: 'Source', value: (r) => (r['source_system_id'] ? 'Imported' : 'Manual') },
   ];
+  /** The device column only where records come from devices (soil & microclimate). */
+  protected readonly columns = computed(() => this.allColumns.filter((c) => c.key !== 'device' || this.code() === 'soil'));
   protected readonly list = new ListState((page, size) => this.api.get<Page<Row>>('/field-records', {
     page, page_size: size, module_code: this.code(), record_type: this.type.value, validation_status: this.validation.value }));
 

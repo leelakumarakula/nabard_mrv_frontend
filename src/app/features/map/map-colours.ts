@@ -30,6 +30,44 @@ export const COLOUR_MODES: { value: ColourMode; label: string; legend: LegendIte
     { key: 'r10', label: '10 – 50 mm', colour: '#64b5f6' }, { key: 'r0', label: '< 10 mm', colour: '#bbdefb' }, NO_DATA] },
 ];
 
+/** IoT device status (server field reporting_state): from the device status and its last stored reading. */
+export const DEVICE_STATES: LegendItem[] = [
+  { key: 'reporting', label: 'Reporting (last 2 days)', colour: '#2e7d32' },
+  { key: 'late', label: 'Late (2 – 7 days)', colour: '#f9a825' },
+  { key: 'silent', label: 'No data for 7+ days', colour: '#c62828' },
+  { key: 'faulty', label: 'Marked faulty', colour: '#6a1b9a' },
+  { key: 'planned', label: 'Planned', colour: '#90a4ae' },
+];
+
+export interface DeviceKind { letter: string; label: string }
+const DEVICE_KINDS: Record<string, DeviceKind> = {
+  soilsync_7in1: { letter: 'S', label: 'SoilSync soil sensor' },
+  moisture_probe: { letter: 'P', label: 'Moisture probe' },
+  microclime: { letter: 'W', label: 'MicroClime weather station' },
+  rainsync: { letter: 'R', label: 'RainSync rain gauge' },
+  analogue_weather: { letter: 'A', label: 'Analogue weather station' },
+};
+const OTHER_DEVICE: DeviceKind = { letter: 'D', label: 'Other device' };
+
+export function deviceKind(type: string | null | undefined): DeviceKind {
+  return (type && DEVICE_KINDS[type]) || OTHER_DEVICE;
+}
+
+export function deviceState(state: string | null | undefined): LegendItem {
+  return DEVICE_STATES.find((s) => s.key === state) ?? { key: 'none', label: 'Unknown', colour: NO_DATA.colour };
+}
+
+/** Map icon name for a device: its type letter on its status colour (drawn on demand by the map). */
+export function deviceIcon(device: Row): string {
+  return `dev-${deviceKind(device['device_type']).letter}-${deviceState(device['reporting_state']).key}`;
+}
+
+export const LOCATION_NOTES: Record<string, string> = {
+  far_from_plot: 'The position recorded in FarmFuture is far from this farm, so the device is not drawn – check it in FarmFuture.',
+  no_position: 'No installed position recorded for this device.',
+  plot_not_located: 'The plot has no GPS point, so the position cannot be checked.',
+};
+
 /** Legend key a plot falls into for the chosen colour mode. */
 export function legendKey(plot: Row, mode: ColourMode): string {
   switch (mode) {

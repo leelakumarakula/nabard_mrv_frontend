@@ -164,7 +164,7 @@ interface Segment { key: string; count: number; share: number; fill: string; ink
               @for (p of rf.driest; track p.record_id) {
                 <a class="feed-row" [routerLink]="['/records', p.record_id]">
                   <span class="feed-icon" [style.color]="bandColour(p.ytd_status)"><mat-icon>water_drop</mat-icon></span>
-                  <span class="grow">{{ p.plot_code }} · <strong>{{ n(p.ytd_received_pct) }} %</strong> of usual rain
+                  <span class="grow">{{ p.farm_name ?? p.plot_code }} · <strong>{{ n(p.ytd_received_pct) }} %</strong> of usual rain
                     <span class="muted small">({{ n(p.ytd_difference_mm) }} mm · {{ p.measured_days }} days measured)</span></span>
                   <span class="muted small">{{ label(p.ytd_status) }}</span>
                 </a>

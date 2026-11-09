@@ -6,8 +6,9 @@ import {
   NavigationControl, Popup, ScaleControl, StyleSpecification,
 } from 'maplibre-gl';
 
+import { deviceId } from '../../core/format';
 import { Row } from '../../core/models';
-import { ColourMode, legendLevel, markerColour } from './map-colours';
+import { ColourMode, deviceIcon, deviceKind, deviceState, legendLevel, markerColour } from './map-colours';
 
 export type Basemap = 'streets' | 'satellite' | 'terrain' | 'light';
 
@@ -18,6 +19,8 @@ export type Basemap = 'streets' | 'satellite' | 'terrain' | 'light';
  */
 const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const TERRAIN_ATTRIBUTION = 'Terrain: <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank">Terrain Tiles</a> (AWS Open Data)';
+
+export const DEVICE_MIN_ZOOM = 12.5;  // devices sit within a few hundred metres of their plot's point
 
 const STYLE: StyleSpecification = {
   version: 8,
@@ -34,6 +37,7 @@ const STYLE: StyleSpecification = {
     plots: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
     columns: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
     farm: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    devices: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
   },
   layers: [
     { id: 'osm', type: 'raster', source: 'osm' },
@@ -67,6 +71,10 @@ const STYLE: StyleSpecification = {
           4, ['case', ['boolean', ['feature-state', 'hover'], false], 7, 5],
           10, ['case', ['boolean', ['feature-state', 'hover'], false], 11, 8],
           15, ['case', ['boolean', ['feature-state', 'hover'], false], 15, 11]] } },
+    // IoT devices: rounded squares (plots are circles) with the type letter on the status colour; farm scale only
+    { id: 'devices', type: 'symbol', source: 'devices', minzoom: DEVICE_MIN_ZOOM,
+      layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], DEVICE_MIN_ZOOM, 0.75, 16, 1.05] } },
   ],
 };
 
@@ -108,7 +116,11 @@ export class MapView implements AfterViewInit, OnDestroy {
   readonly tilt = input(TILT_3D);
   /** Real outline of the selected plot's farm ({boundary, blocks} rings in [lon, lat]) – drawn and framed when set. */
   readonly outline = input<Row | null>(null);
+  /** IoT devices with a position ({latitude, longitude, device_type, reporting_state, ...}). */
+  readonly devices = input<Row[]>([]);
+  readonly showDevices = input(true);
   readonly plotClick = output<Row>();
+  readonly deviceClick = output<Row>();
 
   protected readonly failed = signal(false);
   private readonly zone = inject(NgZone);
@@ -122,6 +134,8 @@ export class MapView implements AfterViewInit, OnDestroy {
   private hovered: number | null = null;
   private selectedFeature: number | null = null;
   private fittedTo: Row[] | null = null;
+  private fittedDevices: Row[] | null = null;
+  private pendingPoint: [number, number, number] | null = null;
 
   constructor() {
     effect(() => this.drawPlots(this.plots(), this.mode(), this.ready()));
@@ -129,6 +143,7 @@ export class MapView implements AfterViewInit, OnDestroy {
     effect(() => this.highlight(this.selectedId(), this.plots(), this.ready()));
     effect(() => this.drawOutline(this.outline(), this.selectedId(), this.mode(), this.ready()));
     effect(() => (this.autoRotate() && this.ready() ? this.startRotation() : this.stopRotation()));
+    effect(() => this.drawDevices(this.devices(), this.showDevices(), this.ready()));
   }
 
   ngAfterViewInit(): void {
@@ -171,6 +186,15 @@ export class MapView implements AfterViewInit, OnDestroy {
           if (plot) this.zone.run(() => this.plotClick.emit(plot));
         });
       }
+      // Device icons are drawn on demand: one per type letter and status colour
+      map.on('styleimagemissing', (e) => this.addDeviceIcon(e.id));
+      map.on('mousemove', 'devices', (e) => this.hoverDevice(e));
+      map.on('mouseleave', 'devices', () => this.unhover());
+      map.on('click', 'devices', (e) => {
+        const id = e.features?.[0]?.id;
+        const device = typeof id === 'number' ? this.devices()[id] : undefined;
+        if (device) this.zone.run(() => this.deviceClick.emit(device));
+      });
       this.resize = new ResizeObserver(() => map.resize());
       this.resize.observe(this.host.nativeElement);
     });
@@ -232,6 +256,69 @@ export class MapView implements AfterViewInit, OnDestroy {
     } else if (bearing !== undefined) {
       map.easeTo({ bearing, pitch: this.threeD() ? this.tilt() : 0, duration: 800 });
     }
+    // A point asked for before the map was ready (e.g. opened from a device link) wins over the overview framing
+    if (this.pendingPoint) {
+      const [lon, lat, zoom] = this.pendingPoint;
+      this.pendingPoint = null;
+      this.flyToPoint(lon, lat, zoom);
+    }
+  }
+
+  /** Glide to a point at farm scale (e.g. one device); waits for the map and its first framing when needed. */
+  flyToPoint(longitude: number, latitude: number, zoom = 16): void {
+    if (!this.map || !this.ready() || (this.plots().length && this.fittedTo !== this.plots())) {
+      this.pendingPoint = [longitude, latitude, zoom];
+      return;
+    }
+    this.map.flyTo({ center: [longitude, latitude], zoom: Math.max(this.map.getZoom(), zoom),
+      pitch: this.threeD() ? Math.min(this.tilt(), FARM_TILT_3D) : 0, speed: 0.9, essential: true });
+  }
+
+  private drawDevices(devices: Row[], show: boolean, ready: boolean): void {
+    const map = this.map;
+    if (!map || !ready) return;
+    const features = devices.flatMap((d, i) => d['latitude'] == null || d['longitude'] == null ? [] : [{
+      type: 'Feature' as const, id: i, geometry: { type: 'Point' as const, coordinates: [d['longitude'], d['latitude']] },
+      properties: { icon: deviceIcon(d) },
+    }]);
+    (map.getSource('devices') as GeoJSONSource).setData({ type: 'FeatureCollection', features });
+    map.setLayoutProperty('devices', 'visibility', show ? 'visible' : 'none');
+    // A map of devices only (no plots, e.g. the device page) frames the devices itself
+    if (!this.plots().length && features.length && this.fittedDevices !== devices) {
+      this.fittedDevices = devices;
+      const bounds = new LngLatBounds();
+      for (const f of features) bounds.extend(f.geometry.coordinates as [number, number]);
+      const camera = map.cameraForBounds(bounds, { padding: 80, maxZoom: 16.5 });
+      if (camera) map.jumpTo(camera);
+    }
+  }
+
+  private addDeviceIcon(id: string): void {
+    const map = this.map;
+    const match = /^dev-(.)-(.+)$/.exec(id);
+    if (!map || !match || map.hasImage(id)) return;
+    const size = 52, ratio = 2;  // 26 px on screen, sharp on high-density displays
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const square = (inset: number, radius: number, colour: string) => {
+      ctx.beginPath();
+      ctx.roundRect(inset, inset, size - 2 * inset, size - 2 * inset, radius);
+      ctx.fillStyle = colour;
+      ctx.fill();
+    };
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = 4;
+    square(4, 12, '#ffffff');
+    ctx.shadowBlur = 0;
+    square(9, 8, deviceState(match[2]).colour);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 22px "Lexend Deca", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(match[1], size / 2, size / 2 + 1);
+    map.addImage(id, ctx.getImageData(0, 0, size, size), { pixelRatio: ratio });
   }
 
   private drawOutline(outline: Row | null, selectedId: string | null, mode: ColourMode, ready: boolean): void {
@@ -313,7 +400,19 @@ export class MapView implements AfterViewInit, OnDestroy {
     if (!plot) return;
     this.popup ??= new Popup({ closeButton: false, closeOnClick: false, offset: 14, className: 'plot-popup' });
     // setText, not setHTML: plot codes and farmer names are user data
-    this.popup.setLngLat([plot['longitude'], plot['latitude']]).setText(`${plot['plot_code']} – ${plot['farmer_label']}`).addTo(map);
+    this.popup.setLngLat([plot['longitude'], plot['latitude']]).setText(`${plot['farm_name'] ? plot['farm_name'] + ' · ' : ''}${plot['plot_code']} – ${plot['farmer_label']}`).addTo(map);
+  }
+
+  private hoverDevice(e: MapLayerMouseEvent): void {
+    const map = this.map!;
+    const id = e.features?.[0]?.id;
+    const device = typeof id === 'number' ? this.devices()[id] : undefined;
+    if (!device) return;
+    map.getCanvas().style.cursor = 'pointer';
+    this.popup ??= new Popup({ closeButton: false, closeOnClick: false, offset: 14, className: 'plot-popup' });
+    this.popup.setLngLat([device['longitude'], device['latitude']])
+      .setText(`${deviceKind(device['device_type']).label} · ${deviceId(device['device_code'])} – ${deviceState(device['reporting_state']).label}`)
+      .addTo(map);
   }
 
   private unhover(): void {

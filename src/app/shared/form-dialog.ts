@@ -9,7 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { Observable, firstValueFrom, map, of } from 'rxjs';
 
 import { ApiService } from '../core/api.service';
-import { isoToLocalDateTime, labelize, localDateTimeToIso } from '../core/format';
+import { deviceId, isoToLocalDateTime, labelize, localDateTimeToIso } from '../core/format';
 import { LookupsService } from '../core/lookups.service';
 import { Page } from '../core/models';
 import { Notice } from './page-header';
@@ -193,7 +193,7 @@ export class FormDialog implements OnInit {
       case 'module': return this.lookups.workstreams().pipe(map((w) => w.map((x) => ({ value: x.code, label: `${x.number}. ${x.name}` }))));
       case 'reviewer': return this.lookups.reviewers().pipe(map((r) => r.filter((x) => x.can_review).map((x) => ({ value: x.id, label: `${x.full_name} (${x.email})` }))));
       case 'method': return this.lookups.calculationMethods().pipe(map((m) => m.map((x) => ({ value: x.code, label: `${x.name} (v${x.version})` }))));
-      case 'device': return this.api.get<Page<any>>('/devices', { page_size: 200 }).pipe(map((p) => p.items.map((x) => ({ value: x.id, label: `${x.device_code} (${labelize(x.device_type)})` }))));
+      case 'device': return this.api.get<Page<any>>('/devices', { page_size: 200 }).pipe(map((p) => p.items.map((x) => ({ value: x.id, label: `${deviceId(x.device_code)} (${labelize(x.device_type)})` }))));
       case 'demo_site': return this.api.get<Page<any>>('/demonstration-sites', { page_size: 200 }).pipe(map((p) => p.items.map((x) => ({ value: x.id, label: `${x.site_code} – ${x.name}` }))));
       case 'surveillance_cluster': return this.api.get<Page<any>>('/surveillance-clusters', { page_size: 200 }).pipe(map((p) => p.items.map((x) => ({ value: x.id, label: `${x.cluster_code} – ${x.name}` }))));
       case 'verifier': return this.lookups.reviewers().pipe(map((r) => r.filter((x) => x.can_verify).map((x) => ({ value: x.id, label: x.full_name }))));

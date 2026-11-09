@@ -70,6 +70,7 @@ export class EntityPicker implements OnInit {
   private toOption(r: any): Option {
     return this.kind() === 'farmer'
       ? { id: r.id, label: `${r.farmer_code} – ${r.full_name}` }
-      : { id: r.id, label: r.farmer_label ? `${r.plot_code} (${r.farmer_label})` : r.plot_code };
+      : { id: r.id, label: [r.farm_name ? `${r.farm_name} · ${r.plot_code}` : r.plot_code, r.farmer_label ? `(${r.farmer_label})` : '']
+          .filter(Boolean).join(' ') };
   }
 }

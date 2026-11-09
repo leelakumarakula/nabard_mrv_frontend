@@ -295,7 +295,7 @@ export class SourceDetailPage implements OnInit {
     this.api.post<Row>(`/integrations/sources/${this.code()}/import-devices`).subscribe((out) => {
       const skipped = out['skipped']?.length ? `; ${out['skipped'].length} skipped (${out['skipped'].join('; ')})` : '';
       this.notify.success(`Registered ${out['devices_created']} devices from ${out['farms']} farms ` +
-        `(${out['already_imported']} already imported${skipped})`);
+        `(${out['already_imported']} already imported; ${out['positions_updated'] ?? 0} positions stored or refreshed${skipped})`);
       this.ngOnInit();
     });
   }
