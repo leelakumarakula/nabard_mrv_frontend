@@ -373,3 +373,8 @@ td.cell-bar { position: relative; min-width: 140px; }
   .hide-sm { display: none; }
   .demo-banner { padding: 8px 16px; }
 }
+
+/* Pest & disease forecast map markers (FarmFuture's inspection-plan look) */
+.pf-zone-label { background: #0f6b3a; color: #e7efcf; font: 600 13px 'Lexend Deca', sans-serif; padding: 3px 10px; border-radius: 6px; pointer-events: none; }
+.pf-area { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; color: #fff; font: 700 13px 'Lexend Deca', sans-serif; cursor: pointer; box-shadow: 0 1px 5px rgba(0, 0, 0, .4); padding: 0; }
+.pf-point { width: 22px; height: 22px; border-radius: 50%; background: #2f8fe6; border: 2px solid #fff; color: #fff; font: 700 9px 'Lexend Deca', sans-serif; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }

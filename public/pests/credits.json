@@ -1,0 +1,108 @@
+{
+ "cwsb": [
+  {
+   "file": "cwsb-1.jpg",
+   "title": "High-resolution photomicrograph of Xylotrechus quadripes.jpg",
+   "credit": "Sanjayverma.bt",
+   "license": "CC BY 4.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:High-resolution_photomicrograph_of_Xylotrechus_quadripes.jpg"
+  },
+  {
+   "file": "cwsb-2.jpg",
+   "title": "Xylotrechus quadripes.jpg",
+   "credit": "L. Shyamal",
+   "license": "CC BY-SA 3.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Xylotrechus_quadripes.jpg"
+  }
+ ],
+ "rust": [
+  {
+   "file": "rust-1.jpg",
+   "title": "Coffee-leaf-rust-defoliation.jpg",
+   "credit": "Michael.C.Wright",
+   "license": "CC BY-SA 4.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Coffee-leaf-rust-defoliation.jpg"
+  },
+  {
+   "file": "rust-2.jpg",
+   "title": "Hemileia vastatrix - coffee leaf rust.jpg",
+   "credit": "Smartse",
+   "license": "CC BY-SA 3.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Hemileia_vastatrix_-_coffee_leaf_rust.jpg"
+  },
+  {
+   "file": "rust-3.jpg",
+   "title": "Hemileia vastatrix Leaf symptoms.png",
+   "credit": "Carvalho et al.",
+   "license": "CC BY 2.5",
+   "licenseUrl": "https://creativecommons.org/licenses/by/2.5",
+   "source": "https://commons.wikimedia.org/wiki/File:Hemileia_vastatrix_Leaf_symptoms.png"
+  }
+ ],
+ "berryborer": [
+  {
+   "file": "berryborer-1.jpg",
+   "title": "Berry-borer.png",
+   "credit": "Michael.C.Wright",
+   "license": "CC BY-SA 4.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Berry-borer.png"
+  },
+  {
+   "file": "berryborer-2.jpg",
+   "title": "Coffee berry borer1.jpg",
+   "credit": "L. Shyamal",
+   "license": "CC BY-SA 3.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Coffee_berry_borer1.jpg"
+  },
+  {
+   "file": "berryborer-3.jpg",
+   "title": "Hypothenemus entry.jpg",
+   "credit": "L. Shyamal",
+   "license": "CC BY-SA 3.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Hypothenemus_entry.jpg"
+  }
+ ],
+ "mealybug": [
+  {
+   "file": "mealybug-1.jpg",
+   "title": "Citrus mealybug Planococcus citrus on Clivia miniata 04.jpg",
+   "credit": "Sinikka Halme",
+   "license": "CC BY-SA 4.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Citrus_mealybug_Planococcus_citrus_on_Clivia_miniata_04.jpg"
+  },
+  {
+   "file": "mealybug-2.jpg",
+   "title": "Planococcus citri 1455198.jpg",
+   "credit": "Whitney Cranshaw, Colorado State University, United States",
+   "license": "CC BY 3.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Planococcus_citri_1455198.jpg"
+  }
+ ],
+ "shothole": [
+  {
+   "file": "shothole-1.jpg",
+   "title": "Piles of white boring dust indicate ambrosia beetle attacks.png",
+   "credit": "Tim Schowalter, Oregon St. U.",
+   "license": "Public domain",
+   "licenseUrl": "",
+   "source": "https://commons.wikimedia.org/wiki/File:Piles_of_white_boring_dust_indicate_ambrosia_beetle_attacks.png"
+  },
+  {
+   "file": "shothole-2.jpg",
+   "title": "Xylosandrus compactus-PPT.jpg",
+   "credit": "Michael C. Thomas, Florida Department of Agriculture and Consumer Services, Bugwood.org",
+   "license": "CC BY 3.0 us",
+   "licenseUrl": "https://creativecommons.org/licenses/by/3.0/us/deed.en",
+   "source": "https://commons.wikimedia.org/wiki/File:Xylosandrus_compactus-PPT.jpg"
+  }
+ ]
+}

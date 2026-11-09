@@ -46,7 +46,7 @@ const NAV: NavGroup[] = [
     title: 'Workstreams', items: [
       { label: '1. Climate & early warning', icon: 'thunderstorm', link: '/modules/climate', perm: 'module.read' },
       { label: '2. Soil & water conservation', icon: 'water_drop', link: '/modules/water', perm: 'module.read' },
-      { label: '3. Pest & disease', icon: 'bug_report', link: '/modules/pest', perm: 'module.read' },
+      { label: '3. Pest & disease', icon: 'bug_report', link: '/pest-forecast', perm: 'module.read' },
       { label: '4. Soil & microclimate', icon: 'grass', link: '/modules/soil', perm: 'module.read' },
       { label: '5. Suitability & planning', icon: 'terrain', link: '/modules/suitability', perm: 'module.read' },
       { label: '6. Farmer & community', icon: 'diversity_3', link: '/modules/farmer_fpo', perm: 'module.read' },

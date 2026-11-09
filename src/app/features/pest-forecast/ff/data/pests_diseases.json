@@ -1,0 +1,300 @@
+{
+  "version": "1.0",
+  "note": "Draft content for frontend use. Have an agronomist / Coffee Board guidance verify chemical names and doses before production.",
+  "items": [
+    {
+      "id": "cwsb",
+      "type": "pest",
+      "name": "Coffee White Stem Borer (CWSB)",
+      "scientific_name": "Xylotrechus quadripes",
+      "affects": ["arabica"],
+      "affected_parts": ["stem", "main branches"],
+      "symptoms": [
+        "Yellowing and wilting of leaves, followed by drying of the branch or whole plant",
+        "Ridges or tunnels under the bark of the main stem near the collar",
+        "Dry sawdust-like frass and small oval exit holes on the stem",
+        "White grub (larva) found inside the stem when it is split"
+      ],
+      "look_alikes": ["root rot", "waterlogging", "drought wilt"],
+      "severity_levels": {
+        "low": "A few plants show early yellowing, with egg-laying or ridges on the bark but no exit holes yet",
+        "medium": "Several plants with exit holes and wilting branches",
+        "high": "Many plants dying; infestation visible across the block"
+      },
+      "destroy_affected_plant": true,
+      "destroy_guidance": "Uproot plants with confirmed borer damage (exit holes or grubs inside the stem) and burn them, including roots, so that grubs and pupae are killed. Do this before the next flight season. Do not leave cut stems or stumps lying in the plantation.",
+      "immediate_actions": [
+        "Scout all plants in the block, especially the stem from the collar up to the first branches",
+        "Uproot and burn the heavily infested plants, including roots",
+        "Cut and burn dried infested branches, and do not leave them in the field",
+        "Scrape loose bark gently and apply stem treatment recommended by the Coffee Board on remaining plants",
+        "Mark the block as affected and re-scout after 2 weeks"
+      ],
+      "cultural_control": [
+        "Maintain adequate shade, because thin shade increases CWSB incidence",
+        "Avoid water stress and delayed or missed blossom and backing irrigation",
+        "Remove and burn infested plants before the flight season starts",
+        "Prefer CWSB-tolerant selections at replanting (for example S.4595 and Sln.11)"
+      ],
+      "chemical_control": "Use only the stem treatment / insecticide recommended by the Coffee Board for your region, following the label for dose, timing and pre-harvest interval.",
+      "risk_season": {
+        "months": ["March", "April", "May", "June"],
+        "trigger": "Adult beetle flight begins after pre-monsoon showers and lasts through the early monsoon. Dry spells during this period raise the risk."
+      },
+      "fertilizer_recommended": false,
+      "fertilizer_note": "Fertilizer does not control the borer. Do not apply extra nitrogen to infested plants.",
+      "irrigation_note": "Keep soil moisture steady. Water-stressed plants are more attractive to the beetle.",
+      "followup_days": 14,
+      "escalate_when": "Infestation spreads to new plants after removal, or more than about 5 percent of plants in a block are affected. Contact the Coffee Board extension officer or CCRI."
+    },
+    {
+      "id": "leaf_rust",
+      "type": "disease",
+      "name": "Coffee Leaf Rust",
+      "scientific_name": "Hemileia vastatrix",
+      "affects": ["arabica", "robusta"],
+      "affected_parts": ["leaves"],
+      "symptoms": [
+        "Pale yellow spots on the upper surface of the leaf",
+        "Orange powdery spore masses on the underside of the leaf",
+        "Spots merge, leaves turn brown and fall prematurely",
+        "Severe defoliation and die-back of branches in bad outbreaks"
+      ],
+      "look_alikes": ["brown eye spot", "nutrient deficiency yellowing"],
+      "severity_levels": {
+        "low": "Few leaves with spots, mainly in the lower canopy",
+        "medium": "Many leaves with orange pustules and some leaf fall",
+        "high": "Heavy leaf fall and exposed branches"
+      },
+      "destroy_affected_plant": false,
+      "destroy_guidance": "Do not uproot the plant. Remove and destroy only badly affected leaves and shoots, and do not leave fallen infected leaves piled under the plant.",
+      "immediate_actions": [
+        "Look for orange pustules on the underside of the leaf",
+        "Spray copper-based fungicide (Bordeaux mixture or copper oxychloride) as per Coffee Board schedule",
+        "Regulate shade and prune to improve airflow",
+        "Improve drainage in wet patches",
+        "Re-scout after 14 days"
+      ],
+      "cultural_control": [
+        "Prune and handle shade before and during the monsoon",
+        "Plant rust-resistant varieties at replanting (for example Cauvery, Chandragiri, Sln.9)",
+        "Keep plants well nourished and avoid heavy overbearing"
+      ],
+      "chemical_control": "Follow the Coffee Board spray schedule for copper-based and systemic fungicides, and apply in dry weather windows only.",
+      "risk_season": {
+        "months": ["June", "July", "August", "September", "October", "November", "December"],
+        "trigger": "Spread is fastest during humid, rainy weather, and the main outbreak peaks after the monsoon."
+      },
+      "fertilizer_recommended": false,
+      "fertilizer_note": "Fertilizer does not cure rust. Avoid heavy nitrogen during an outbreak, and if the plants look weak, do a soil test and use balanced nutrition after recovery.",
+      "irrigation_note": "Avoid wetting the leaves. Do not cut water, because stressed plants lose more leaves.",
+      "followup_days": 14,
+      "escalate_when": "Heavy leaf fall spreads to more than about 25 percent of the block or does not slow after spraying."
+    },
+    {
+      "id": "berry_borer",
+      "type": "pest",
+      "name": "Coffee Berry Borer",
+      "scientific_name": "Hypothenemus hampei",
+      "affects": ["arabica", "robusta"],
+      "affected_parts": ["berries"],
+      "symptoms": [
+        "Tiny bore hole at the tip of the berry",
+        "Berries drop prematurely or beans inside are damaged",
+        "Powdery frass inside the berry and chewed beans"
+      ],
+      "look_alikes": ["berry drop from drought", "black rot"],
+      "severity_levels": {
+        "low": "Under about 2 percent of berries bored",
+        "medium": "About 2 to 5 percent of berries bored",
+        "high": "More than 5 percent of berries bored"
+      },
+      "destroy_affected_plant": false,
+      "destroy_guidance": "Do not uproot. Strip off and destroy all remaining berries after harvest, including those on the ground.",
+      "immediate_actions": [
+        "Pick all ripe berries on time and do not leave over-ripe fruit on the plant",
+        "Remove and destroy dropped and left-over berries (use hot water or deep burying)",
+        "Check berries from several plants to estimate the percentage bored",
+        "Use traps if available, as recommended by the Coffee Board"
+      ],
+      "cultural_control": [
+        "Clean harvesting with no left-over berries in the field",
+        "Keep drying yards and stores clean of old infested beans",
+        "Prune to open the canopy"
+      ],
+      "chemical_control": "Use only Coffee Board approved options, and only when needed.",
+      "risk_season": {
+        "months": ["November", "December", "January", "February", "March"],
+        "trigger": "Beetles breed in left-over berries and spread during and after harvest."
+      },
+      "fertilizer_recommended": false,
+      "fertilizer_note": "Not related to nutrition.",
+      "irrigation_note": "No change needed.",
+      "followup_days": 14,
+      "escalate_when": "More than 5 percent of berries are bored after sanitation."
+    },
+    {
+      "id": "brown_eye_spot",
+      "type": "disease",
+      "name": "Brown Eye Spot",
+      "scientific_name": "Cercospora coffeicola",
+      "affects": ["arabica", "robusta"],
+      "affected_parts": ["leaves", "berries", "nursery seedlings"],
+      "symptoms": [
+        "Round brown spots with a grey or white centre and a yellow halo on the leaf",
+        "Dark, sunken patches on berries",
+        "More common on plants that are stressed or poorly nourished"
+      ],
+      "look_alikes": ["leaf rust", "nutrient deficiency"],
+      "severity_levels": {
+        "low": "Scattered spots on a few leaves",
+        "medium": "Many spots and some leaf fall",
+        "high": "Heavy leaf and berry damage"
+      },
+      "destroy_affected_plant": false,
+      "destroy_guidance": "Do not uproot. In nurseries, remove and destroy badly affected seedlings.",
+      "immediate_actions": [
+        "Improve plant health, since this disease mostly hits weak plants",
+        "Regulate shade and ensure proper drainage",
+        "Spray copper fungicide if the infection is spreading, as per Coffee Board guidance",
+        "Use balanced nutrition if the plants show weak growth"
+      ],
+      "cultural_control": [
+        "Correct nutrient and moisture stress",
+        "Avoid nursery overcrowding and over-watering"
+      ],
+      "chemical_control": "Copper-based fungicide as per Coffee Board guidance.",
+      "risk_season": {
+        "months": ["June", "July", "August", "September"],
+        "trigger": "Warm and humid weather, or plants weakened by drought or poor nutrition."
+      },
+      "fertilizer_recommended": true,
+      "fertilizer_note": "Weak or poorly fed plants are more prone. Fix the cause with a soil test and balanced nutrition, not extra nitrogen.",
+      "irrigation_note": "Keep moisture steady and avoid water stress.",
+      "followup_days": 14,
+      "escalate_when": "Spread continues after correcting stress and spraying."
+    },
+    {
+      "id": "black_rot",
+      "type": "disease",
+      "name": "Black Rot",
+      "scientific_name": "Koleroga noxia",
+      "affects": ["arabica", "robusta"],
+      "affected_parts": ["leaves", "twigs", "berries"],
+      "symptoms": [
+        "Leaves and berries turn black and hang on the plant, stuck by fungal threads",
+        "Rotting of berries and leaves, mostly in the wet season",
+        "Affected leaves and berries do not fall off easily"
+      ],
+      "look_alikes": ["anthracnose", "berry borer damage"],
+      "severity_levels": {
+        "low": "A few shoots or leaves affected",
+        "medium": "Several branches with hanging blackened leaves or berries",
+        "high": "Large areas of the canopy affected"
+      },
+      "destroy_affected_plant": false,
+      "destroy_guidance": "Do not uproot. Remove and burn the hanging blackened leaves and berries.",
+      "immediate_actions": [
+        "Pick off and destroy infected leaves, berries and twigs",
+        "Open the canopy by pruning and regulating shade",
+        "Spray Bordeaux mixture or copper fungicide as per Coffee Board guidance, in the early monsoon"
+      ],
+      "cultural_control": [
+        "Prune before the monsoon to reduce humidity inside the canopy",
+        "Regulate shade and remove weeds"
+      ],
+      "chemical_control": "Copper-based fungicide as per Coffee Board guidance.",
+      "risk_season": {
+        "months": ["June", "July", "August", "September"],
+        "trigger": "Continuous wet weather and high humidity with dense canopy."
+      },
+      "fertilizer_recommended": false,
+      "fertilizer_note": "Fertilizer does not treat black rot.",
+      "irrigation_note": "Avoid wetting the canopy.",
+      "followup_days": 14,
+      "escalate_when": "Spread continues into the next rains despite pruning and spraying."
+    },
+    {
+      "id": "root_rot",
+      "type": "disease",
+      "name": "Root Rot",
+      "scientific_name": "Various fungi (for example Fusarium, Rosellinia, Armillaria)",
+      "affects": ["arabica", "robusta"],
+      "affected_parts": ["roots", "collar"],
+      "symptoms": [
+        "Sudden wilting and yellowing of the whole plant",
+        "Rotten, dark or discoloured roots and collar",
+        "Plants die in patches, often in waterlogged areas"
+      ],
+      "look_alikes": ["CWSB", "drought wilt", "waterlogging"],
+      "severity_levels": {
+        "low": "A single plant wilting",
+        "medium": "A patch of plants affected",
+        "high": "Spreading patches and many dead plants"
+      },
+      "destroy_affected_plant": true,
+      "destroy_guidance": "Uproot dead and dying plants with confirmed root rot, including as many roots as possible, and burn them. Isolate the pit and avoid replanting in the same spot immediately.",
+      "immediate_actions": [
+        "Check the roots and collar for rot and for stem borer",
+        "Uproot and burn affected plants",
+        "Improve drainage and avoid waterlogging",
+        "Drench the neighbouring plants as per Coffee Board guidance"
+      ],
+      "cultural_control": [
+        "Fix drainage in low-lying areas",
+        "Remove old stumps and roots from the plantation",
+        "Do not over-irrigate"
+      ],
+      "chemical_control": "Use only Coffee Board recommended drenches.",
+      "risk_season": {
+        "months": ["June", "July", "August", "September", "October"],
+        "trigger": "Waterlogged soil during the monsoon."
+      },
+      "fertilizer_recommended": false,
+      "fertilizer_note": "Fertilizer will not recover rotted roots.",
+      "irrigation_note": "Reduce irrigation in the affected block and fix drainage.",
+      "followup_days": 14,
+      "escalate_when": "Patches keep expanding after drainage is fixed."
+    },
+    {
+      "id": "leaf_miner",
+      "type": "pest",
+      "name": "Coffee Leaf Miner",
+      "scientific_name": "Leucoptera coffeella",
+      "affects": ["arabica", "robusta"],
+      "affected_parts": ["leaves"],
+      "symptoms": [
+        "Irregular brown blotches on the upper side of the leaf",
+        "Tiny larvae feeding inside the leaf tissue",
+        "Leaf drop in severe infestations"
+      ],
+      "look_alikes": ["leaf scorch", "brown eye spot"],
+      "severity_levels": {
+        "low": "A few leaves mined",
+        "medium": "Many leaves mined with some leaf drop",
+        "high": "Heavy defoliation"
+      },
+      "destroy_affected_plant": false,
+      "destroy_guidance": "Do not uproot the plant. Pick off and destroy severely mined leaves.",
+      "immediate_actions": [
+        "Look for mined blotches and larvae inside the leaf",
+        "Avoid unnecessary broad-spectrum sprays, which kill natural enemies",
+        "Spray only if infestation is severe, using a Coffee Board approved option"
+      ],
+      "cultural_control": [
+        "Maintain shade and avoid dry-spell stress",
+        "Keep field clean of weeds and fallen leaves"
+      ],
+      "chemical_control": "Only if severe, and only an option approved by the Coffee Board.",
+      "risk_season": {
+        "months": ["February", "March", "April", "May"],
+        "trigger": "Hot, dry weather."
+      },
+      "fertilizer_recommended": false,
+      "fertilizer_note": "Not related to nutrition.",
+      "irrigation_note": "Avoid prolonged water stress in dry spells.",
+      "followup_days": 14,
+      "escalate_when": "Leaf drop is heavy across the block."
+    }
+  ]
+}

@@ -120,6 +120,7 @@ export class DevicesPage implements OnInit {
     .ff-api { margin-top: 10px; font-family: monospace; }
     .ff-device { display: flex; gap: 8px; align-items: center; margin: 6px 0 8px; font-size: .9rem; color: var(--muted); }
     .ff-device select { font: inherit; color: var(--text, inherit); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border); }
+    .ff-wide { grid-column: 1 / -1; overflow-x: auto; }
     @media (max-width: 900px) { .ff-grid { grid-template-columns: minmax(0, 1fr); } }
     @media (max-width: 800px) { .device-location { grid-template-columns: minmax(0, 1fr); } }`,
   template: `
@@ -184,10 +185,25 @@ export class DevicesPage implements OnInit {
                   <p class="muted small ff-api">{{ fi['api'] }}</p>
                 </div>
               }
+              @if (f['device_statistics']; as ds) {
+                <div class="ff-card ff-wide"><h4>Device Statistics · Weekly</h4>
+                  <p class="muted small">{{ ds['from'] | date: 'dd MMM y' }} – {{ ds['to'] | date: 'dd MMM y' }} · the device's own
+                    statistics screen in FarmFuture (device card → statistics). Minimum / Maximum are the lowest and highest reading
+                    of any day, Average is the mean of the daily averages, Latest is the last day's average.</p>
+                  @if (ds['metrics'].length) {
+                    <table class="ff-table"><thead><tr><th>Reading</th><th>Minimum</th><th>Maximum</th><th>Average</th><th>Latest</th><th>Unit</th></tr></thead>
+                      <tbody>@for (m of ds['metrics']; track m['label']) {
+                        <tr><td>{{ m['label'] }}</td><td>{{ m['minimum_text'] }}</td><td>{{ m['maximum_text'] }}</td>
+                          <td><strong>{{ m['average_text'] }}</strong></td><td>{{ m['latest_text'] }}</td><td>{{ m['unit'] }}</td></tr>}</tbody></table>
+                  } @else {<p class="muted">No daily statistics in this week.</p>}
+                  <p class="muted small ff-api">{{ ds['api'] }}</p>
+                </div>
+              }
             </div>
-            <p class="muted small">Read live from FarmFuture just now; nothing is stored. FarmFuture's Sensors page shows its latest
-              reading before FarmFuture's own correction, so it can differ a lot from the corrected daily values this platform
-              records – those are the values FarmFuture's Farm Insights uses.</p>
+            <p class="muted small">Read live from FarmFuture just now; nothing is stored. FarmFuture's screens do not all use the
+              same numbers: Farm Insights and this platform's records use FarmFuture's corrected daily values, while the Sensors
+              page and Device Statistics show Nitrogen, Phosphorus, Potassium and pH before FarmFuture's correction – so those four
+              differ between the screens (temperature, EC and moisture agree).</p>
           }
         </section>
       }
