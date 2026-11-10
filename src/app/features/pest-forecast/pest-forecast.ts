@@ -569,6 +569,7 @@ export class PestForecastPage implements AfterViewInit, OnDestroy {
       el.addEventListener('click', () => this.zone.run(() => this.toggleArea(a.n)));
       this.markers.push(new Marker({ element: el }).setLngLat([a.centre.lon, a.centre.lat]).addTo(map));
     }
+    const area = open ? plan?.areas?.find((a: PlanArea) => a.n === open) : null;
     for (const p of area?.points ?? []) {
       const el = document.createElement('div');
       el.className = 'pf-point';

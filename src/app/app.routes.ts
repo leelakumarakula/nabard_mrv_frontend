@@ -31,6 +31,10 @@ export const routes: Routes = [
 
       { path: 'modules/:code', ...f('module.read'), loadComponent: () => import('./features/modules/module-page').then((m) => m.ModulePage) },
       { path: 'records/:id', ...f('module.read'), loadComponent: () => import('./features/modules/record-detail').then((m) => m.RecordDetailPage) },
+      { path: 'climate', ...f('module.read'), loadComponent: () => import('./features/climate/climate-page').then((m) => m.ClimatePage) },
+      { path: 'soil', ...f('module.read'), loadComponent: () => import('./features/soil/soil-page').then((m) => m.SoilPage) },
+      { path: 'water', ...f('module.read'), loadComponent: () => import('./features/water/water-page').then((m) => m.WaterPage) },
+      { path: 'suitability', ...f('module.read'), loadComponent: () => import('./features/suitability/suitability-page').then((m) => m.SuitabilityPage) },
       { path: 'pest-forecast', ...f('module.read'), loadComponent: () => import('./features/pest-forecast/pest-forecast').then((m) => m.PestForecastPage) },
       { path: 'advisories', ...f('advisory.read'), loadComponent: () => import('./features/operations/advisories').then((m) => m.AdvisoriesPage) },
       { path: 'advisories/:id', ...f('advisory.read'), loadComponent: () => import('./features/operations/advisories').then((m) => m.AdvisoryDetailPage) },

@@ -44,11 +44,11 @@ const NAV: NavGroup[] = [
   },
   {
     title: 'Workstreams', items: [
-      { label: '1. Climate & early warning', icon: 'thunderstorm', link: '/modules/climate', perm: 'module.read' },
-      { label: '2. Soil & water conservation', icon: 'water_drop', link: '/modules/water', perm: 'module.read' },
+      { label: '1. Climate & early warning', icon: 'thunderstorm', link: '/climate', perm: 'module.read' },
+      { label: '2. Soil & water conservation', icon: 'water_drop', link: '/water', perm: 'module.read' },
       { label: '3. Pest & disease', icon: 'bug_report', link: '/pest-forecast', perm: 'module.read' },
-      { label: '4. Soil & microclimate', icon: 'grass', link: '/modules/soil', perm: 'module.read' },
-      { label: '5. Suitability & planning', icon: 'terrain', link: '/modules/suitability', perm: 'module.read' },
+      { label: '4. Soil & microclimate', icon: 'grass', link: '/soil', perm: 'module.read' },
+      { label: '5. Suitability & planning', icon: 'terrain', link: '/suitability', perm: 'module.read' },
       { label: '6. Farmer & community', icon: 'diversity_3', link: '/modules/farmer_fpo', perm: 'module.read' },
       { label: '7. MRV & verification', icon: 'verified', link: '/mrv', perm: 'mrv.read' },
     ],
@@ -56,11 +56,10 @@ const NAV: NavGroup[] = [
   {
     title: 'Field operations', items: [
       { label: 'Advisories & alerts', icon: 'campaign', link: '/advisories', perm: 'advisory.read' },
-      { label: 'Practice adoption', icon: 'task_alt', link: '/practices', perm: 'module.read' },
       { label: 'IoT devices', icon: 'sensors', link: '/devices', perm: 'module.read' },
-      { label: 'Demonstration sites', icon: 'yard', link: '/demonstration-sites', perm: 'module.read' },
-      { label: 'Pest surveillance clusters', icon: 'pest_control', link: '/surveillance-clusters', perm: 'module.read' },
-      { label: 'Community resource persons', icon: 'record_voice_over', link: '/crps', perm: 'module.read' },
+      // Hidden from the menu on 10 Nov 2026 (no data yet, no FarmFuture source); the pages and routes remain:
+      // Practice adoption (/practices), Demonstration sites (/demonstration-sites),
+      // Pest surveillance clusters (/surveillance-clusters), Community resource persons (/crps).
     ],
   },
   {
